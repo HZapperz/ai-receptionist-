@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Empty } from "@/components/Panel";
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, cn } from "@/components/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn, StatusLabel } from "@/components/ui";
 import { EXAMPLE_CONFIGS } from "@/lib/example-configs";
 import { maskPhone, money } from "@/lib/format";
 
@@ -118,13 +118,7 @@ function ConfigCards({ config }: { config: Config }) {
                   {s.minutes_per_dog ? <span className="text-xs text-muted">about {s.minutes_per_dog} min per pet</span> : null}
                 </div>
                 {s.description && <p className="mt-0.5 text-sm text-muted">{s.description}</p>}
-                {s.includes && s.includes.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {s.includes.map((item) => (
-                      <Badge key={item}>{item}</Badge>
-                    ))}
-                  </div>
-                )}
+                <MetaLine items={s.includes ?? []} className="mt-1" />
                 <PriceTable prices={s.base_cents} guide={sizeGuide} className="mt-3" />
               </div>
             ))}
@@ -162,11 +156,11 @@ function ConfigCards({ config }: { config: Config }) {
         </InfoCard>
 
         <InfoCard icon={MapPin} title="Service area" description="Cities and ZIP codes the business serves.">
-          <Chips items={list<string>(config.service_area_cities)} />
+          <MetaLine items={list<string>(config.service_area_cities)} />
           {list<string>(config.service_area_zips).length > 0 && (
             <>
               <p className="mt-4 mb-1.5 text-xs font-medium text-muted">Top ZIP codes</p>
-              <Chips items={list<string>(config.service_area_zips)} />
+              <MetaLine items={list<string>(config.service_area_zips)} />
             </>
           )}
           {list<string>(config.not_offered).length > 0 && (
@@ -175,7 +169,7 @@ function ConfigCards({ config }: { config: Config }) {
                 <Ban className="size-3" aria-hidden="true" />
                 Not offered
               </p>
-              <Chips items={list<string>(config.not_offered)} />
+              <MetaLine items={list<string>(config.not_offered)} />
             </>
           )}
         </InfoCard>
@@ -209,9 +203,9 @@ function ConfigCards({ config }: { config: Config }) {
               <ul className="space-y-2">
                 {notes.map((n) => (
                   <li key={n} className="flex gap-2 text-sm text-ink">
-                    <Badge tone="warning" className="mt-0.5 shrink-0">
+                    <StatusLabel tone="warning" className="mt-0.5 shrink-0">
                       Open
-                    </Badge>
+                    </StatusLabel>
                     {n.replace(/^To confirm:\s*/i, "")}
                   </li>
                 ))}
@@ -256,7 +250,11 @@ function SwapCard({ live }: { live: Config }) {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-lg font-semibold tracking-tight text-ink">{text(config.name)}</p>
-              {example ? <Badge tone="warning">Example · {example.label}</Badge> : <Badge tone="success">Live</Badge>}
+              {example ? (
+                <StatusLabel tone="warning">Example · {example.label}</StatusLabel>
+              ) : (
+                <StatusLabel tone="success">Live</StatusLabel>
+              )}
             </div>
             <p className="text-sm text-muted">
               {text(config.hours)}
@@ -269,7 +267,7 @@ function SwapCard({ live }: { live: Config }) {
               </div>
             ))}
             {list<Addon>(config.addons).length > 0 && (
-              <Chips items={list<Addon>(config.addons).map((a) => `${a.label ?? a.key} +${money(a.cents)}`)} />
+              <MetaLine items={list<Addon>(config.addons).map((a) => `${a.label ?? a.key} +${money(a.cents)}`)} />
             )}
             {outbound.audience && (
               <p className="text-sm text-muted">
@@ -342,14 +340,11 @@ function PriceTable({ prices, guide, className }: { prices?: Record<string, numb
   );
 }
 
-function Chips({ items }: { items: string[] }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
-        <Badge key={item}>{item}</Badge>
-      ))}
-    </div>
-  );
+// Cities, ZIPs, add-ons and what a service includes are attributes, not states: one muted line
+// with the separator the rest of the dashboard uses, so a long list stays quiet.
+function MetaLine({ items, className }: { items: string[]; className?: string }) {
+  if (items.length === 0) return null;
+  return <p className={cn("text-xs text-muted", className)}>{items.join(" · ")}</p>;
 }
 
 function Segmented({

@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Badge, Button, cn } from "@/components/ui";
+import { Button, cn, StatusLabel } from "@/components/ui";
 import { type ReportRun, type ReportRunStatus, type ResearchType } from "@/lib/lead-reports";
 
 export type LeadReportHistoryProps = {
@@ -41,9 +41,7 @@ export function LeadReportHistory({
         <div className="flex items-center gap-2">
           <FileText className="size-4 text-brand" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-ink">Research History</h2>
-          <span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-medium text-muted ring-1 ring-line ring-inset">
-            {runs.length} runs
-          </span>
+          <span className="text-xs font-medium text-muted tabular-nums">{runs.length} runs</span>
         </div>
 
         <Button
@@ -116,31 +114,35 @@ export function LeadReportHistory({
               >
                 <div className="space-y-1.5 min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <ResearchTypeBadge type={resType} />
                     <span className="font-semibold text-ink text-xs sm:text-sm truncate max-w-md">
                       {displayTitle}
                     </span>
                     <StatusBadge status={run.status} />
                   </div>
 
-                  <div className="flex items-center gap-3 text-muted flex-wrap text-[11px]">
+                  <div className="flex items-center gap-1.5 text-muted flex-wrap text-[11px]">
+                    <ResearchTypeLabel type={resType} />
+                    <span aria-hidden="true">·</span>
                     <span className="flex items-center gap-1 font-medium text-ink/80">
                       <Search className="size-3 text-muted" />
                       <span>{run.target.area}</span>
                     </span>
 
                     {run.status === "done" && leadCount > 0 && (
-                      <span className="font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                        {leadCount} leads
-                      </span>
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="font-medium tabular-nums">{leadCount} leads</span>
+                      </>
                     )}
 
                     {run.report?.findings && run.report.findings.length > 0 && (
-                      <span className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                        {run.report.findings.length} findings
-                      </span>
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="font-medium tabular-nums">{run.report.findings.length} findings</span>
+                      </>
                     )}
 
+                    <span aria-hidden="true">·</span>
                     <span>
                       {new Date(run.created_at).toLocaleString("en-US", {
                         dateStyle: "short",
@@ -193,57 +195,60 @@ export function LeadReportHistory({
   );
 }
 
-function ResearchTypeBadge({ type }: { type: ResearchType }) {
+// the research type is an attribute of the run, not a state, so it rides in the meta line as
+// plain text — the icon alone carries enough of the distinction.
+function ResearchTypeLabel({ type }: { type: ResearchType }) {
   switch (type) {
     case "competitor_analysis":
       return (
-        <Badge tone="brand" className="text-[10px] py-0 px-1.5">
-          <Target className="size-2.5 mr-1" /> Competitors
-        </Badge>
+        <span className="inline-flex items-center gap-1 font-medium">
+          <Target className="size-3" /> Competitors
+        </span>
       );
     case "custom":
       return (
-        <Badge tone="info" className="text-[10px] py-0 px-1.5">
-          <Compass className="size-2.5 mr-1" /> Custom
-        </Badge>
+        <span className="inline-flex items-center gap-1 font-medium">
+          <Compass className="size-3" /> Custom
+        </span>
       );
     case "lead_discovery":
     default:
       return (
-        <Badge tone="success" className="text-[10px] py-0 px-1.5">
-          <Users className="size-2.5 mr-1" /> Lead Opportunities
-        </Badge>
+        <span className="inline-flex items-center gap-1 font-medium">
+          <Users className="size-3" /> Lead Opportunities
+        </span>
       );
   }
 }
 
+// the run outcome already has a telling icon, so it stands in for StatusLabel's dot.
 function StatusBadge({ status }: { status: ReportRunStatus }) {
   switch (status) {
     case "pending":
       return (
-        <Badge tone="warning" className="text-[11px]">
-          <Clock className="size-3 mr-1" /> Pending
-        </Badge>
+        <StatusLabel tone="warning" dot={false}>
+          <Clock /> Pending
+        </StatusLabel>
       );
     case "running":
       return (
-        <Badge tone="info" className="text-[11px]">
-          <Loader2 className="size-3 mr-1 animate-spin" /> Running
-        </Badge>
+        <StatusLabel tone="info" dot={false}>
+          <Loader2 className="animate-spin" /> Running
+        </StatusLabel>
       );
     case "done":
       return (
-        <Badge tone="success" className="text-[11px]">
-          <CheckCircle2 className="size-3 mr-1" /> Complete
-        </Badge>
+        <StatusLabel tone="success" dot={false}>
+          <CheckCircle2 /> Complete
+        </StatusLabel>
       );
     case "failed":
       return (
-        <Badge tone="danger" className="text-[11px]">
-          <AlertTriangle className="size-3 mr-1" /> Failed
-        </Badge>
+        <StatusLabel tone="danger" dot={false}>
+          <AlertTriangle /> Failed
+        </StatusLabel>
       );
     default:
-      return <Badge tone="neutral" className="text-[11px]">{status}</Badge>;
+      return <StatusLabel tone="neutral">{status}</StatusLabel>;
   }
 }

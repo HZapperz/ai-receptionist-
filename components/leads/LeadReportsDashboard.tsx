@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LeadReportScheduleCard } from "@/components/leads/LeadReportScheduleCard";
 import { LeadReportHistory } from "@/components/leads/LeadReportHistory";
 import { LeadReportView } from "@/components/leads/LeadReportView";
-import { Button } from "@/components/ui";
+import { Button, StatusLabel } from "@/components/ui";
 import {
   type ReportsApiResponse,
   fetchReports,
@@ -93,13 +93,11 @@ export function LeadReportsDashboard() {
           <Sparkles className="size-4 text-brand" />
           <span className="text-xs font-semibold text-ink">Automated Market Research & Intelligence</span>
           {data?.schedule?.enabled ? (
-            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-600/20">
-              Active Schedule
-            </span>
+            <StatusLabel tone="success">Active Schedule</StatusLabel>
           ) : (
-            <span className="rounded-full bg-canvas px-2.5 py-0.5 text-[11px] font-medium text-muted ring-1 ring-line">
+            <StatusLabel tone="neutral">
               {data?.schedule ? "Schedule Paused" : "Not configured"}
-            </span>
+            </StatusLabel>
           )}
         </div>
 

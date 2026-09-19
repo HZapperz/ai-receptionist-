@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import { StatusLabel } from "@/components/ui";
 import { BRAND } from "@/lib/brand";
 import {
   createClientId,
@@ -62,6 +63,9 @@ const MARKDOWN_COMPONENTS: Components = {
     </a>
   ),
 };
+
+// A work item's state reads as a dot plus the word, so a row of them does not turn into a row of capsules.
+const TASK_TONES = { working: "info", waiting: "neutral", needs_approval: "warning", done: "success" } as const;
 
 function formatPayloadValue(val: unknown): string {
   if (val == null) return "";
@@ -243,21 +247,13 @@ export function ManagerChat() {
         </div>
         <div className="flex items-center gap-2 text-xs">
           {loading && !state ? (
-            <span className="rounded bg-zinc-100 px-2 py-1 dark:bg-zinc-800">Connecting…</span>
+            <StatusLabel>Connecting…</StatusLabel>
           ) : isUnavailable ? (
-            <span className="rounded bg-amber-100 px-2 py-1 font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              Runtime Unavailable
-            </span>
+            <StatusLabel tone="warning">Runtime Unavailable</StatusLabel>
           ) : activeEvents.length > 0 ? (
-            <span className="flex items-center gap-1.5 rounded bg-blue-50 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-blue-600 dark:bg-blue-400" />
-              Processing ({activeEvents.length})
-            </span>
+            <StatusLabel tone="info">Processing ({activeEvents.length})</StatusLabel>
           ) : (
-            <span className="flex items-center gap-1.5 rounded bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Ready
-            </span>
+            <StatusLabel tone="success">Ready</StatusLabel>
           )}
         </div>
       </header>
@@ -287,13 +283,7 @@ export function ManagerChat() {
             {activeTasks.map((t) => (
               <div key={t.id} className="flex items-center gap-2 rounded border border-zinc-200 bg-white px-2.5 py-1 text-xs shadow-xs dark:border-zinc-700 dark:bg-zinc-800">
                 <span className="font-medium">{t.title}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] uppercase font-bold ${
-                  t.status === "needs_approval" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
-                  t.status === "working" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
-                  "bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300"
-                }`}>
-                  {t.status.replace("_", " ")}
-                </span>
+                <StatusLabel tone={TASK_TONES[t.status]}>{t.status.replace("_", " ")}</StatusLabel>
               </div>
             ))}
           </div>

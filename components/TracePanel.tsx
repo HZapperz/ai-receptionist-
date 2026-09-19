@@ -2,7 +2,7 @@
 
 import { Activity } from "lucide-react";
 import { useState } from "react";
-import { Badge, cn } from "@/components/ui";
+import { cn } from "@/components/ui";
 import { houstonTime, maskPhone } from "@/lib/format";
 import { useTable, type Row } from "@/lib/useTable";
 import { Empty, Panel, maskPhones } from "./Panel";
@@ -19,7 +19,6 @@ type Event = Row & {
 };
 
 const AGENTS = ["inbound", "outbound", "manager"] as const;
-const AGENT_TONES = { inbound: "info", outbound: "warning", manager: "brand" } as const;
 const KINDS: Record<string, { border: string; text: string }> = {
   tool: { border: "border-brand", text: "text-brand" },
   message: { border: "border-emerald-500", text: "text-emerald-700" },
@@ -50,8 +49,8 @@ export function TracePanel({ className, filters = false }: { className?: string;
                 onClick={() => setAgent(a)}
                 aria-pressed={agent === a}
                 className={cn(
-                  "cursor-pointer rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                  agent === a ? "bg-ink text-white" : "text-muted hover:bg-canvas hover:text-ink",
+                  "cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                  agent === a ? "bg-canvas text-ink" : "text-muted hover:text-ink",
                 )}
               >
                 {a}
@@ -69,7 +68,7 @@ export function TracePanel({ className, filters = false }: { className?: string;
             <li key={e.id} className={cn("border-l-2 pl-3", (KINDS[e.kind] ?? OTHER_KIND).border)}>
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-muted tabular-nums">{houstonTime(e.created_at)}</span>
-                <Badge tone={AGENT_TONES[e.agent as keyof typeof AGENT_TONES] ?? "neutral"}>{e.agent}</Badge>
+                <span className="font-medium text-muted capitalize">{e.agent}</span>
                 <span className="truncate font-medium text-ink">{e.name ?? e.kind}</span>
                 <span className={cn("font-medium", (KINDS[e.kind] ?? OTHER_KIND).text)}>{e.kind}</span>
                 {e.latency_ms != null && <span className="text-muted">{e.latency_ms} ms</span>}

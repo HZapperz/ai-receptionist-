@@ -6,3 +6,4 @@ export { cn } from "./cn";
 export { Input, Label } from "./Input";
 export { Logo } from "./Logo";
 export { StatusDot } from "./StatusDot";
+export { StatusLabel } from "./StatusLabel";

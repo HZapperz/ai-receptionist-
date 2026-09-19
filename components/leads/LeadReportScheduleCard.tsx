@@ -22,7 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
-import { Badge, Button, Input, Label } from "@/components/ui";
+import { Button, Input, Label, StatusLabel } from "@/components/ui";
 import {
   COMMON_TIMEZONES,
   type Cadence,
@@ -220,25 +220,22 @@ export function LeadReportScheduleCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        {/* worker health and schedule state, side by side: each dotted label already separates
+            itself, so they need spacing rather than any divider between them */}
+        <div className="flex items-center gap-3 shrink-0">
           {worker?.error ? (
-            <Badge tone="danger" className="text-xs" title={worker.error}>
+            <StatusLabel tone="danger" title={worker.error}>
               Worker Alert
-            </Badge>
+            </StatusLabel>
           ) : worker?.running ? (
-            <Badge tone="success" className="text-xs">
-              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />
-              Scheduler Active
-            </Badge>
+            <StatusLabel tone="success">Scheduler Active</StatusLabel>
           ) : (
-            <Badge tone="neutral" className="text-xs">
-              Scheduler Offline
-            </Badge>
+            <StatusLabel tone="neutral">Scheduler Offline</StatusLabel>
           )}
 
-          <Badge tone={schedule?.enabled ? "brand" : "neutral"} className="text-xs">
+          <StatusLabel tone={schedule?.enabled ? "brand" : "neutral"}>
             {!schedule ? "Not configured" : schedule.enabled ? "Schedule Enabled" : "Paused"}
-          </Badge>
+          </StatusLabel>
         </div>
       </div>
 

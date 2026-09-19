@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Badge, cn } from "@/components/ui";
+import { StatusLabel, cn } from "@/components/ui";
 import { houstonTime, maskPhone } from "@/lib/format";
 
 // A card with a header and a scrolling body. The dashboard grid and the full pages are built from these.
@@ -25,9 +25,7 @@ export function Panel({
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
           {title}
-          {count != null && (
-            <span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-medium text-muted ring-1 ring-line ring-inset">{count}</span>
-          )}
+          {count != null && <span className="text-xs font-medium text-muted tabular-nums">{count}</span>}
         </h2>
         {action}
       </header>
@@ -61,9 +59,9 @@ const STATUS_TONES = {
   failed: "danger",
 } as const;
 
-// One badge color per status value in docs/CONTRACTS.md (bookings, leads and tasks).
+// One dot color per status value in docs/CONTRACTS.md (bookings, leads and tasks).
 export function StatusBadge({ status }: { status: string }) {
-  return <Badge tone={STATUS_TONES[status as keyof typeof STATUS_TONES] ?? "neutral"}>{status}</Badge>;
+  return <StatusLabel tone={STATUS_TONES[status as keyof typeof STATUS_TONES] ?? "neutral"}>{status}</StatusLabel>;
 }
 
 // Masks every phone number inside free text, such as a tool's JSON input or a task payload.

@@ -3,7 +3,7 @@
 import { ListChecks, Play } from "lucide-react";
 import { useState } from "react";
 import { Empty, maskPhones, Panel, StatusBadge } from "@/components/Panel";
-import { Badge, Button } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { postAgents } from "@/lib/agents";
 import { houstonTime, timeAgo } from "@/lib/format";
 import { useTable, type Row } from "@/lib/useTable";
@@ -18,7 +18,6 @@ type Task = Row & {
   created_at: string;
 };
 
-const AGENT_TONES = { inbound: "info", outbound: "warning" } as const;
 const KIND_LABELS: Record<string, string> = { find_leads: "Find leads", draft_emails: "Draft emails", follow_up: "Follow up" };
 
 // A follow_up payload holds a phone, so mask before showing.
@@ -59,8 +58,10 @@ export function TasksPanel({ className }: { className?: string }) {
           {tasks.map((t) => (
             <li key={t.id} className="rounded-lg border border-line p-3">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-ink">{KIND_LABELS[t.kind] ?? t.kind}</span>
-                <Badge tone={AGENT_TONES[t.for_agent as keyof typeof AGENT_TONES] ?? "neutral"}>{t.for_agent}</Badge>
+                <span className="min-w-0 truncate font-medium text-ink">
+                  {KIND_LABELS[t.kind] ?? t.kind}
+                  <span className="text-xs font-normal text-muted"> · {t.for_agent}</span>
+                </span>
                 <span className="ml-auto flex items-center gap-2">
                   <span className="text-xs text-muted" title={houstonTime(t.created_at, "datetime")}>
                     {timeAgo(t.created_at)}

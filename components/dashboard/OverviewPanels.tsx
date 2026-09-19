@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { BookingsPanel } from "@/components/BookingsPanel";
 import { groupThreads, INBOX_EMPTY, type Message, type Thread } from "@/components/InboxPanel";
 import { Empty, Panel, maskPhones } from "@/components/Panel";
-import { Badge, StatusDot } from "@/components/ui";
+import { StatusDot, StatusLabel } from "@/components/ui";
 import { maskPhone, timeAgo } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useNow } from "@/lib/useNow";
@@ -247,11 +247,14 @@ function ThreadRow({
             {thread.last.direction === "out" && <span className="font-medium text-ink/70">AI: </span>}
             {thread.last.body}
           </p>
-          <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {escalated && <Badge tone="warning">Needs you</Badge>}
-            {booked && <Badge tone="success">Booked</Badge>}
-            {live ? <Badge tone="info">AI texting</Badge> : <Badge>Session ended</Badge>}
-            <span className="text-[11px] text-muted">{thread.messages.length} messages</span>
+          {/* Only two states earn a dot: what needs a person, and whether the AI is still on the line.
+              The rest ride the muted meta text, so a busy row is a sentence and not a row of dots. */}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {escalated && <StatusLabel tone="warning">Needs you</StatusLabel>}
+            {live && <StatusLabel tone="info">AI texting</StatusLabel>}
+            <span className="text-[11px] text-muted tabular-nums">
+              {[booked && "Booked", !live && "Session ended", `${thread.messages.length} messages`].filter(Boolean).join(" · ")}
+            </span>
           </p>
         </div>
       </Link>

@@ -4,7 +4,7 @@ import { Bot, MessageSquareText, PawPrint } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Bubble, groupThreads, INBOX_EMPTY, type Message } from "@/components/InboxPanel";
 import { Empty } from "@/components/Panel";
-import { Badge, Card, cn } from "@/components/ui";
+import { Card, cn, StatusLabel } from "@/components/ui";
 import { houstonTime, maskPhone, timeAgo } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { useTable } from "@/lib/useTable";
@@ -101,10 +101,10 @@ export function InboxView({ linked }: { linked?: string }) {
               {count} messages · since {houstonTime(thread.messages[0].created_at, "datetime")}
             </p>
           </div>
-          <Badge tone="brand">
+          <StatusLabel tone="brand" dot={false} className="shrink-0">
             <Bot aria-hidden="true" />
             Handled by AI
-          </Badge>
+          </StatusLabel>
         </header>
         <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {thread.messages.map((m) => (
