@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # model
     LLM_BASE_URL: str = "https://api.featherless.ai/v1"
     LLM_API_KEY: str = ""
+    FEATHERLESS_API: str = ""
     LLM_MODEL: str = "Qwen/Qwen3.8-27B"
     LLM_MAX_CONCURRENCY: int = 6
     LLM_DISABLE_THINKING: bool = False  # on: with it off, Qwen skipped tools and made up prices
@@ -57,6 +58,9 @@ class Settings(BaseSettings):
 
     def send_allowlist(self) -> set[str]:
         return {a.strip().lower() for a in self.SEND_ALLOWLIST.split(",") if a.strip()}
+
+    def effective_llm_api_key(self) -> str:
+        return self.LLM_API_KEY or self.FEATHERLESS_API
 
     def effective_service_role_key(self) -> str:
         return self.SUPABASE_SERVICE_ROLE_KEY or self.SUPABASE_KEY

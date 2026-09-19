@@ -7,7 +7,7 @@ from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, InternalSer
 
 from agents.settings import settings
 
-_client = AsyncOpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY or "x", timeout=90)
+_client = AsyncOpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.effective_llm_api_key() or "x", timeout=90)
 _RETRY = (RateLimitError, APITimeoutError, APIConnectionError, InternalServerError)
 # A 24B-34B model costs 2 concurrency units per in-flight call on Featherless.
 # The team plan has 100 units (GET /v1/plan), so LLM_MAX_CONCURRENCY=6 is safe.
