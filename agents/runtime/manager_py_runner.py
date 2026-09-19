@@ -52,7 +52,10 @@ _NO_OMP = (
     "Runtime note, which overrides any capability claim above: you are running on the "
     "dashboard's Python runtime. You have no workspace files, no code execution, no "
     "browser and no delegation to another agent. Your tools are the ones listed for this "
-    "turn, and nothing else."
+    "turn, and nothing else.\n"
+    # The chat bubble renders plain text, so markdown shows up as literal ** and #.
+    "Write your reply as plain text. No markdown: no **bold**, no headings, no bullet "
+    "syntax. Use short lines and plain dashes if you need a list."
 )
 _READ_ONLY = (
     " This runtime is read-only: you cannot create or update tasks, propose an SMS, or "
