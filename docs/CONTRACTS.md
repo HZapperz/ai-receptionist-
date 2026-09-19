@@ -111,7 +111,7 @@ class CreateTaskArgs(BaseModel):
 | get_info | `{"text": str}` |
 | quote | `{"line_items": [{"label", "cents"}], "total_cents": int}` |
 | find_slots | `{"slots": [{"slot_id", "starts_at", "label"}]}` max 3, only slots with room. `starts_at` is Houston-local ISO (`2026-09-26T09:00:00-05:00`); `label` is human text such as "Sat Sep 26, 9:00 AM". Adds `"note": str` when nothing was open in the requested range and it returned the next open slots instead |
-| book | `{"booking_id", "starts_at", "total_cents", "status": "confirmed"}` or `{"error": "slot_taken"}`. Recomputes the price in code; never trusts a total from the model. |
+| book | `{"booking_id", "starts_at", "label", "total_cents", "status": "confirmed"}` or `{"error": "slot_taken"}` (also `{"error"}` for an unknown slot_id or a time that is too soon or past; both tell the model to call find_slots). Recomputes the price in code; never trusts a total from the model. |
 | lookup_lead | `{"found": bool, "lead_id", "name", "status"}`. Sets the lead to `replied` when found. |
 | escalate | `{"ok": true}`. Texts OWNER_PHONE with the summary. |
 | get_lead | `{"lead_id", "name", "address", "rating", "website", "snippet"}` with snippet 300 characters or fewer |
@@ -129,7 +129,7 @@ An error is always `{"error": str}`. Tools never raise to the model.
 | --- | --- | --- | --- |
 | find_leads | outbound | `{"term": str, "area": str, "limit": int}` | Apify run, leads upserted on place_id, then a draft_emails task for the new rows |
 | draft_emails | outbound | `{"lead_ids": [str]}` or `{"lead_ids": "all_new"}` | One drafting run per lead, one after another |
-| follow_up | inbound | `{"phone": str, "reason": str}` | Inbound agent texts a follow-up, for example to someone who got a quote and did not book |
+| follow_up | inbound | `{"phone": str, "reason": str}` | Inbound agent texts a follow-up, for example to someone who got a quote and did not book. Result `{"ok": true, "sent": bool, "text": str}`, or `{"error": "not_in_ai_session"}` without a model call when the phone has no active AI session |
 
 ## HTTP routes (agents service)
 

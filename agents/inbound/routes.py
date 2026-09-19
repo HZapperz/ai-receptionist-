@@ -11,6 +11,7 @@ from agents.inbound.twilio_io import send_sms, valid_signature
 from agents.runtime.ctx import Ctx
 from agents.runtime.events import log_event
 from agents.runtime.loop import GIVE_UP, run_agent
+from agents.settings import settings
 
 router = APIRouter()
 EMPTY_TWIML = "<Response/>"
@@ -113,3 +114,15 @@ async def handle_inbound(phone: str) -> None:
             await log_event(ctx, kind="error", name="inbound_run", result={"error": str(e)[:500]})
             reply = GIVE_UP
         await send_and_store(ctx, trim_reply(reply))
+        if reply == GIVE_UP:
+            await alert_owner(ctx)
+
+
+async def alert_owner(ctx: Ctx) -> None:
+    """GIVE_UP promises the customer a person, so make sure the owner hears about it."""
+    if not settings.OWNER_PHONE:
+        return
+    try:
+        await send_sms(settings.OWNER_PHONE, f"[needs a person] The AI could not answer {ctx.phone}. See the Inbox.")
+    except Exception as e:
+        await log_event(ctx, kind="error", name="owner_alert", result={"error": str(e)[:500]})
