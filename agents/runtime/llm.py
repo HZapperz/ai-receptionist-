@@ -11,12 +11,16 @@ _client = AsyncOpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_K
 # A 24B-34B model costs 2 concurrency units per in-flight call on Featherless,
 # so a 4-unit plan allows 2 at once. Confirm with GET /v1/plan.
 _sem = asyncio.Semaphore(settings.LLM_MAX_CONCURRENCY)
-_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+# A think block, or one cut off by max_tokens that runs to the end.
+_THINK = re.compile(r"<think>.*?(?:</think>|\Z)", re.DOTALL)
 
 
 def strip_think(text: str | None) -> str:
     """Reasoning must never reach a customer."""
-    return _THINK.sub("", text or "").strip()
+    text = _THINK.sub("", text or "")
+    # A stray </think> means the opening tag was in the prompt template:
+    # everything before it is reasoning too.
+    return text.rsplit("</think>", 1)[-1].strip()
 
 
 def _fake_response():

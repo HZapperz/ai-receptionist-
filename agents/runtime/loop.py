@@ -1,4 +1,7 @@
 import json
+import re
+import uuid
+from types import SimpleNamespace
 
 from agents.runtime import llm
 from agents.runtime.ctx import Ctx
@@ -6,6 +9,37 @@ from agents.runtime.events import log_event
 from agents.runtime.tools import AgentSpec, run_tool
 
 GIVE_UP = "Let me get a person to help with this. Someone from the team will text you shortly."
+_TOOL_CALL = re.compile(r"<tool_call>\s*(.*?)\s*(?:</tool_call>|\Z)", re.DOTALL)
+
+
+def parse_tool_calls(text: str) -> list:
+    """Some providers hand back Qwen's tool calls as text:
+    <tool_call>{"name": ..., "arguments": {...}}</tool_call>. Turn them into
+    objects shaped like the SDK's tool calls so run_tool() can run them.
+    A reply that is only such a JSON object (no tags) counts too."""
+    blobs = [m.group(1) for m in _TOOL_CALL.finditer(text)]
+    if not blobs and text.lstrip().startswith("{"):
+        blobs = [text]
+    calls = []
+    for blob in blobs:
+        try:
+            data = json.loads(blob)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(data, dict) or not data.get("name"):
+            continue
+        args = data.get("arguments", data.get("parameters", {}))
+        calls.append(SimpleNamespace(
+            id=f"call_{uuid.uuid4().hex[:12]}", type="function",
+            function=SimpleNamespace(name=data["name"],
+                                     arguments=args if isinstance(args, str) else json.dumps(args)),
+        ))
+    return calls
+
+
+def _unsendable(text: str) -> bool:
+    """Empty, raw tool markup or raw JSON must never reach a customer."""
+    return not text or "tool_call>" in text or text.lstrip().startswith(("{", "["))
 
 
 async def run_agent(spec: AgentSpec, messages: list[dict], ctx: Ctx, max_steps: int = 6) -> str:
@@ -14,12 +48,22 @@ async def run_agent(spec: AgentSpec, messages: list[dict], ctx: Ctx, max_steps: 
     for _ in range(max_steps):
         resp = await llm.chat(msgs, tools=schemas)
         msg = resp.choices[0].message
-        if not msg.tool_calls:
-            text = llm.strip_think(msg.content)
+        text = llm.strip_think(msg.content)
+        calls = msg.tool_calls or parse_tool_calls(text)
+        if not calls:
+            if _unsendable(text):
+                await log_event(ctx, kind="error", name="bad_reply", result={"text": (msg.content or "")[:500]})
+                return GIVE_UP
             await log_event(ctx, kind="message", name="reply", result={"text": text})
             return text
-        msgs.append(msg.model_dump(exclude_none=True))
-        for call in msg.tool_calls:
+        if msg.tool_calls:
+            msgs.append(msg.model_dump(exclude_none=True))
+        else:
+            msgs.append({"role": "assistant", "content": "", "tool_calls": [
+                {"id": c.id, "type": "function",
+                 "function": {"name": c.function.name, "arguments": c.function.arguments}}
+                for c in calls]})
+        for call in calls:
             result = await run_tool(spec, call, ctx)
             msgs.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result, default=str)})
     await log_event(ctx, kind="error", name="max_steps", result={"steps": max_steps})

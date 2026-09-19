@@ -1,4 +1,5 @@
 import asyncio
+import re
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response
@@ -8,10 +9,12 @@ from agents.inbound import gate
 from agents.inbound.tools import INBOUND
 from agents.inbound.twilio_io import send_sms, valid_signature
 from agents.runtime.ctx import Ctx
-from agents.runtime.loop import run_agent
+from agents.runtime.events import log_event
+from agents.runtime.loop import GIVE_UP, run_agent
 
 router = APIRouter()
 EMPTY_TWIML = "<Response/>"
+MAX_REPLY_CHARS = 320
 _locks: dict[str, asyncio.Lock] = {}
 
 
@@ -55,18 +58,58 @@ async def sms(request: Request, background: BackgroundTasks):
     return _twiml()
 
 
+def phone_lock(phone: str) -> asyncio.Lock:
+    """One run per phone at a time, so two quick texts don't get two answers."""
+    return _locks.setdefault(phone, asyncio.Lock())
+
+
+def load_history(db, phone: str) -> list[dict]:
+    """The last 20 texts with this phone, oldest first, as chat messages."""
+    rows = (db.table("messages").select("direction,body,created_at").eq("phone", phone)
+            .order("created_at", desc=True).limit(20).execute().data)
+    return [{"role": "user" if r["direction"] == "in" else "assistant", "content": r["body"]}
+            for r in reversed(rows)]
+
+
+def load_customer(db, phone: str) -> dict | None:
+    return (db.table("customers").select("*").eq("phone", phone).limit(1).execute().data or [None])[0]
+
+
+def trim_reply(text: str) -> str:
+    """At most MAX_REPLY_CHARS, cut at the last sentence end (or word) that fits."""
+    text = (text or "").strip()
+    if len(text) <= MAX_REPLY_CHARS:
+        return text
+    ends = [m.end() for m in re.finditer(r"[.!?](?=\s|$)", text) if m.end() <= MAX_REPLY_CHARS]
+    if ends and ends[-1] >= MAX_REPLY_CHARS // 3:
+        return text[:ends[-1]]
+    return text[:MAX_REPLY_CHARS - 3].rsplit(" ", 1)[0].rstrip(" ,;:-") + "..."
+
+
+async def send_and_store(ctx: Ctx, reply: str) -> dict:
+    """Text the reply, and store it only when it was sent (or dry-run)."""
+    try:
+        sent = await send_sms(ctx.phone, reply)
+    except Exception as e:  # a Twilio failure must not vanish in a background task
+        sent = {"error": str(e)[:500]}
+    if "error" in sent:
+        await log_event(ctx, kind="error", name="sms_send", result=sent)
+        return sent
+    ctx.db.table("messages").insert({"phone": ctx.phone, "direction": "out", "body": reply}).execute()
+    return sent
+
+
 async def handle_inbound(phone: str) -> None:
-    lock = _locks.setdefault(phone, asyncio.Lock())
-    async with lock:
+    async with phone_lock(phone):
         db = get_db()
-        rows = (db.table("messages").select("direction,body,created_at").eq("phone", phone)
-                .order("created_at", desc=True).limit(20).execute().data)
-        if not rows or rows[0]["direction"] == "out":
+        history = load_history(db, phone)
+        if not history or history[-1]["role"] == "assistant":
             return  # an earlier run already answered everything
-        customer = (db.table("customers").select("*").eq("phone", phone).limit(1).execute().data or [None])[0]
-        ctx = Ctx(db=db, config=load_config(db), agent="inbound", ref=phone, phone=phone, customer=customer)
-        history = [{"role": "user" if r["direction"] == "in" else "assistant", "content": r["body"]}
-                   for r in reversed(rows)]
-        reply = await run_agent(INBOUND, history, ctx)
-        await send_sms(phone, reply)
-        db.table("messages").insert({"phone": phone, "direction": "out", "body": reply}).execute()
+        ctx = Ctx(db=db, config=load_config(db), agent="inbound", ref=phone, phone=phone,
+                  customer=load_customer(db, phone))
+        try:
+            reply = await run_agent(INBOUND, history, ctx)
+        except Exception as e:  # the model or a provider failed: the customer still hears back
+            await log_event(ctx, kind="error", name="inbound_run", result={"error": str(e)[:500]})
+            reply = GIVE_UP
+        await send_and_store(ctx, trim_reply(reply))
