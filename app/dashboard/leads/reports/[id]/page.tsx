@@ -74,8 +74,8 @@ function ReportContent({ id, isEmbed }: { id: string; isEmbed: boolean }) {
             <p className="text-xs">Loading embedded report...</p>
           </div>
         ) : error ? (
-          <div className="p-6 text-center text-xs text-red-600 bg-red-50 rounded-xl border border-red-200">
-            <AlertTriangle className="size-6 mx-auto mb-2 text-red-500" />
+          <div className="p-6 text-center text-xs text-rose-700 bg-rose-50 rounded-xl border border-rose-200">
+            <AlertTriangle className="size-6 mx-auto mb-2 text-rose-500" />
             <p className="font-semibold">Unable to load report</p>
             <p className="mt-1 text-muted">{error}</p>
           </div>
@@ -99,12 +99,12 @@ function ReportContent({ id, isEmbed }: { id: string; isEmbed: boolean }) {
     <div className="flex h-full flex-col gap-5 p-6">
       <div className="flex items-center justify-between gap-4">
         <PageHeader
-          title="Market Intelligence & Research Report"
-          description={`Report permalink for research run ${id}`}
+          title="Lead report"
+          description={`Run ${id.slice(0, 8)}`}
         />
         <Button href="/dashboard/leads" variant="outline" size="sm">
           <ArrowLeft className="size-3.5" aria-hidden="true" />
-          <span>Back to Research & Leads</span>
+          <span>Back to leads</span>
         </Button>
       </div>
 
@@ -114,8 +114,8 @@ function ReportContent({ id, isEmbed }: { id: string; isEmbed: boolean }) {
           <p className="text-sm font-medium text-ink">Loading market report data...</p>
         </div>
       ) : error ? (
-        <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-xl border border-red-200 bg-red-50/50 p-8 text-center text-red-800">
-          <AlertTriangle className="size-8 text-red-500" />
+        <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-8 text-center text-rose-800">
+          <AlertTriangle className="size-8 text-rose-500" />
           <h2 className="text-base font-semibold">Report Not Found or Error Loading</h2>
           <p className="max-w-md text-xs text-muted">{error}</p>
           <Button variant="outline" size="sm" onClick={() => {
@@ -140,7 +140,7 @@ function ReportContent({ id, isEmbed }: { id: string; isEmbed: boolean }) {
           <p className="text-xs">
             Run status: <strong className="text-ink">{run?.status || "unknown"}</strong>
           </p>
-          {run?.error && <p className="text-xs text-red-600">{run.error}</p>}
+          {run?.error && <p className="text-xs text-rose-700">{run.error}</p>}
         </div>
       )}
     </div>

@@ -436,5 +436,83 @@ class TestReportsResearch(unittest.IsolatedAsyncioTestCase):
             source_urls = [s["url"] for s in report["evidence_sources"]]
             self.assertIn("https://rivalgroomers.com", source_urls)
 
+    async def test_verbose_synthesis_is_truncated_not_rejected(self):
+        """A verbose model must be trimmed by the handler, never rejected by pydantic.
+
+        run_tool() validates args BEFORE the handler runs, so a max_length below what
+        models naturally emit is a hard reject that burns the agent's retries and fails
+        the whole run. The ceilings keep headroom; the handler does the tightening.
+        """
+        from agents.outbound.reports import (
+            CompetitorComparisonInput,
+            ResearchFindingInput,
+            SaveReportSynthesisArgs,
+            SaveResearchPlanArgs,
+            _handle_save_report_synthesis,
+            _handle_save_research_plan,
+        )
+
+        args = SaveReportSynthesisArgs(
+            title="A long report title that a verbose model might easily write out in full " * 1,
+            summary="Sentence about the market. " * 14,  # ~390 chars
+            recommendations=[
+                "Call the six clinics that have no website listed anywhere online yet today " * 1,
+                "Widen the search radius",
+                "Email the three highest rated groomers",
+                "Re-run this report next week",
+            ],
+            limitations=["First caveat", "Second caveat", "Third caveat"],
+            findings=[
+                ResearchFindingInput(
+                    heading="Mobile service reach",
+                    detail="Evidence shows broad mobile coverage across the metro area. " * 8,
+                )
+            ],
+            comparisons=[
+                CompetitorComparisonInput(
+                    dimension="Package pricing",
+                    our_business="Spa packages from $85 with add-ons available on request. " * 3,
+                    market_evidence="Competitor pages list a range of package tiers. " * 8,
+                    implication="We can compete on transparency of published pricing. " * 3,
+                )
+            ],
+        )
+
+        ctx = MagicMock()
+        ctx.ref = "task_verbose"
+        res = await _handle_save_report_synthesis(ctx, args)
+        self.assertTrue(res.get("ok"), res)
+
+        from agents.outbound.reports import _SYNTHESIS_STORE
+
+        stored = _SYNTHESIS_STORE.pop("task_verbose")
+        self.assertLessEqual(len(stored["title"]), 70)
+        self.assertLessEqual(len(stored["summary"]), 320)
+        self.assertEqual(len(stored["recommendations"]), 3)
+        self.assertTrue(all(len(r) <= 90 for r in stored["recommendations"]))
+        self.assertEqual(len(stored["limitations"]), 2)
+        self.assertLessEqual(len(stored["findings"][0]["detail"]), 360)
+        comp = stored["comparisons"][0]
+        self.assertLessEqual(len(comp["our_business"]), 120)
+        self.assertLessEqual(len(comp["market_evidence"]), 160)
+        self.assertLessEqual(len(comp["implication"]), 140)
+
+        plan_args = SaveResearchPlanArgs(
+            search_term="mobile pet groomers near me",
+            rationale="This query surfaces the direct mobile competitors operating in the target area. " * 2,
+            evidence_needed=["Pricing", "Services", "Coverage area", "Reviews"],
+        )
+        plan_ctx = MagicMock()
+        plan_ctx.ref = "task_verbose_plan"
+        plan_res = await _handle_save_research_plan(plan_ctx, plan_args)
+        self.assertTrue(plan_res.get("ok"), plan_res)
+
+        from agents.outbound.reports import _PLAN_STORE
+
+        plan = _PLAN_STORE.pop("task_verbose_plan")
+        self.assertLessEqual(len(plan["rationale"]), 160)
+        self.assertEqual(len(plan["evidence_needed"]), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

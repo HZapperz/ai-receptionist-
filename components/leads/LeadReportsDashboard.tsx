@@ -131,10 +131,10 @@ export function LeadReportsDashboard() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-xs text-red-800 border border-red-200">
-          <AlertCircle className="size-4 shrink-0 text-red-600" />
+        <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-4 text-xs text-rose-800 border border-rose-200">
+          <AlertCircle className="size-4 shrink-0 text-rose-700" />
           <span className="flex-1">{error}</span>
-          <Button variant="outline" size="sm" onClick={manualRefresh} className="text-xs border-red-300">
+          <Button variant="outline" size="sm" onClick={manualRefresh} className="text-xs border-rose-300">
             Retry
           </Button>
         </div>
@@ -194,12 +194,12 @@ export function LeadReportsDashboard() {
                     <Loader2 className="size-7 animate-spin text-brand mx-auto" />
                     <p className="font-semibold text-ink text-sm">Research Run In Progress...</p>
                     <p className="max-w-md mx-auto text-muted">
-                      Executing agent search, web scraping, evidence synthesis, and competitor positioning analysis.
+                      Searching, reading sources and writing the report.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <AlertCircle className="size-7 text-red-500 mx-auto" />
+                    <AlertCircle className="size-7 text-rose-500 mx-auto" />
                     <p className="font-semibold text-ink text-sm">Run Failed: {selectedRun.status}</p>
                   </div>
                 )}
@@ -207,7 +207,7 @@ export function LeadReportsDashboard() {
                   Objective / Target: <strong className="text-ink">{selectedRun.target.objective || selectedRun.target.term}</strong> ({selectedRun.target.area})
                 </p>
                 {selectedRun.error && (
-                  <p className="text-red-600 mt-2 font-mono text-[11px] bg-red-50 p-3 rounded-lg border border-red-200 max-w-lg mx-auto">
+                  <p className="text-rose-700 mt-2 font-mono text-xs bg-rose-50 p-3 rounded-lg border border-rose-200 max-w-lg mx-auto">
                     {selectedRun.error}
                   </p>
                 )}
