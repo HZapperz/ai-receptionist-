@@ -11,7 +11,9 @@ import { SwapRow } from "@/components/marketing/SwapRow";
 
 export default function Landing() {
   return (
-    <>
+    // "marketing" swaps in the teal palette for this subtree only (app/globals.css); the column
+    // layout lives here rather than on the body, which this wrapper now stands between.
+    <div className="marketing flex min-h-dvh flex-col bg-surface text-ink">
       <Nav />
       <main className="flex-1">
         <Hero />
@@ -23,6 +25,6 @@ export default function Landing() {
         <CtaBand />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

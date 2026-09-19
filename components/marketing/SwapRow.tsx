@@ -33,7 +33,7 @@ function tint(json: string): ReactNode[] {
   for (const m of json.matchAll(TOKEN)) {
     const [text, str, colon, num] = m;
     out.push(json.slice(last, m.index));
-    const color = str ? (colon ? "text-sky-300" : "text-emerald-300") : num ? "text-amber-300" : "text-violet-300";
+    const color = str ? (colon ? "text-sky-300" : "text-emerald-300") : num ? "text-amber-300" : "text-teal-300";
     out.push(
       <span key={m.index} className={color}>
         {str ?? text}
@@ -83,7 +83,7 @@ export function SwapRow() {
                     "flex cursor-pointer items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition",
                     "focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none",
                     selected
-                      ? "border-brand/40 bg-white shadow-card ring-1 ring-brand/20"
+                      ? "border-brand/40 bg-surface shadow-card ring-1 ring-brand/20"
                       : "border-transparent hover:border-line hover:bg-canvas",
                   )}
                 >

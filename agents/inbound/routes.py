@@ -125,7 +125,7 @@ def disclose(reply: str, ctx: Ctx) -> str:
     the model sometimes skips it, so code makes sure."""
     if re.search(r"\b(ai|ia)\b|assistant|asistente", reply, re.I):
         return reply
-    name = (ctx.config or {}).get("name") or "Royal Pawz"
+    name = (ctx.config or {}).get("name") or "Royal Pawz USA"
     return f"Hi! This is {name}'s AI assistant. {reply}"
 
 

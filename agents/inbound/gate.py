@@ -1,4 +1,4 @@
-"""The 833 gate: keeps real Royal Pawz customers away from the demo agent.
+"""The 833 gate: keeps real Royal Pawz USA customers away from the demo agent.
 
 The demo borrows the live toll-free number. A phone that texts AI_GATE_CODE gets
 an AI session; every other text is forwarded untouched to the production SMS
@@ -21,7 +21,7 @@ STOP_WORDS = {"stop", "stopall", "unsubscribe", "cancel", "end", "quit", "revoke
 # Opt-in and help keywords always belong to production too.
 PROD_WORDS = {"start", "unstop", "help", "info"}
 EXIT_WORD = "exit"
-EXIT_REPLY = "You're back with the Royal Pawz team. Someone will reply here soon."
+EXIT_REPLY = "You're back with the Royal Pawz USA team. Someone will reply here soon."
 FORWARD_TIMEOUT_S = 8
 
 

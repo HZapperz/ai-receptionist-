@@ -1,6 +1,6 @@
 # Cutover: pointing the 833 line at the demo, and back
 
-**Owner only.** (833) 302-8947 is Royal Pawz's live toll-free number. Today its webhook goes to the production SMS service. For the demo window it goes to this agents service, which hands every text without the gate code straight back to production (docs/CONTRACTS.md, "833 gate"). Keep the window short and revert right after.
+**Owner only.** (833) 302-8947 is Royal Pawz USA's live toll-free number. Today its webhook goes to the production SMS service. For the demo window it goes to this agents service, which hands every text without the gate code straight back to production (docs/CONTRACTS.md, "833 gate"). Keep the window short and revert right after.
 
 Nothing in this file contains a secret or the production URL. `$PROD` below is the value of `PROD_SMS_WEBHOOK_URL` in your private `.env`.
 
@@ -39,7 +39,7 @@ The fallback is production itself. If the demo service is down, slow, or answers
 ## Test, in this order
 1. **A phone that is not a tester** texts "test". It shows up in the rp-admin SMS inbox, and nothing appears in the demo's Inbox panel. The agents log says `gate: forwarded, production answered 200`. **If this fails, roll back now.**
 2. **A tester phone** texts `<AI_GATE_CODE> hi`. An AI reply arrives within about 20 seconds, and the Inbox panel shows the thread.
-3. The tester texts `EXIT` and gets "You're back with the Royal Pawz team…".
+3. The tester texts `EXIT` and gets "You're back with the Royal Pawz USA team…".
 
 ## Roll back (right after the demo)
 ```bash

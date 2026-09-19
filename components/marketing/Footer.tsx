@@ -22,7 +22,7 @@ const COLUMNS = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-line bg-white">
+    <footer className="border-t border-line bg-surface">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 md:grid-cols-[2fr_1fr_1fr]">
         <div>
           <Logo />

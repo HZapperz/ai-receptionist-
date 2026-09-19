@@ -18,7 +18,7 @@ RECENT_TOOLS_CHARS = 1500
 
 def _load_playbook() -> str:
     """The injected part of how-to-reply.md: voice, the reply loop and a playbook
-    per situation, derived from the real Royal Pawz text history."""
+    per situation, derived from the real Royal Pawz USA text history."""
     try:
         text = (Path(__file__).parent / "how-to-reply.md").read_text(encoding="utf-8")
     except OSError:
@@ -164,7 +164,7 @@ def _customer_text(ctx: Ctx) -> str:
 
 def system_prompt(ctx: Ctx) -> str:
     cfg = ctx.config or {}
-    name = known(cfg.get("name")) or "Royal Pawz"
+    name = known(cfg.get("name")) or "Royal Pawz USA"
     phone = known(cfg.get("phone"))
     website = known(cfg.get("website"))
     now = datetime.now(HOUSTON)

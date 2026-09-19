@@ -2,5 +2,5 @@
 export const BRAND = {
   name: "Relay",
   tagline: "The AI employee for local service businesses",
-  showcase: "Royal Pawz",
+  showcase: "Royal Pawz USA",
 } as const;

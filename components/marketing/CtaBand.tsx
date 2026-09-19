@@ -6,7 +6,7 @@ import { BRAND } from "@/lib/brand";
 export function CtaBand() {
   return (
     <section className="px-6 pb-20 sm:pb-28">
-      <div className="relative isolate mx-auto max-w-6xl overflow-hidden rounded-3xl bg-linear-to-br from-brand to-violet-700 px-6 py-16 text-center shadow-lift sm:px-16 sm:py-20">
+      <div className="relative isolate mx-auto max-w-6xl overflow-hidden rounded-3xl bg-linear-to-br from-brand to-brand-accent px-6 py-16 text-center shadow-lift sm:px-16 sm:py-20">
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-dot-grid opacity-50 invert" />
         <div aria-hidden="true" className="absolute -top-32 left-1/2 -z-10 size-[520px] -translate-x-1/2 rounded-full bg-white/15 blur-3xl" />
 

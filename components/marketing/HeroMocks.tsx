@@ -37,7 +37,7 @@ export function PhoneMock() {
         </Badge>
       </figcaption>
       <div className="w-[280px] rounded-[2.6rem] bg-ink p-2 shadow-lift ring-1 ring-black/10">
-        <div className="relative overflow-hidden rounded-[2.1rem] bg-white">
+        <div className="relative overflow-hidden rounded-[2.1rem] bg-surface">
           <div className="absolute top-2 left-1/2 h-5 w-20 -translate-x-1/2 rounded-full bg-ink" />
           <div className="flex items-center justify-between px-6 pt-3 pb-1 text-[11px] font-semibold text-ink">
             <span>9:41</span>
@@ -50,8 +50,8 @@ export function PhoneMock() {
 
           <div className="flex items-center gap-2 border-b border-line bg-canvas/70 px-3 pt-3 pb-2.5">
             <ChevronLeft className="size-4 text-brand" />
-            <span className="grid size-8 place-items-center rounded-full bg-linear-to-br from-brand to-violet-600 text-[11px] font-semibold text-white">
-              RP
+            <span className="grid size-8 place-items-center rounded-full bg-linear-to-br from-brand to-brand-accent text-[11px] font-semibold text-brand-foreground">
+              {BRAND.showcase.split(/\s+/).map((w) => w[0]).join("").slice(0, 2)}
             </span>
             <span className="leading-tight">
               <span className="block text-[13px] font-semibold text-ink">{BRAND.showcase}</span>
@@ -68,7 +68,7 @@ export function PhoneMock() {
                   "max-w-[80%] animate-fade-up rounded-2xl px-3 py-2 text-[12.5px] leading-snug",
                   m.delay,
                   m.from === "customer"
-                    ? "self-end rounded-br-md bg-brand text-white"
+                    ? "self-end rounded-br-md bg-brand text-brand-foreground"
                     : "self-start rounded-bl-md bg-canvas text-ink ring-1 ring-line",
                 )}
               >

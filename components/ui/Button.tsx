@@ -6,7 +6,7 @@ const variants = {
   primary: "bg-brand text-brand-foreground shadow-sm hover:bg-brand-hover",
   default: "bg-brand text-brand-foreground shadow-sm hover:bg-brand-hover",
   secondary: "bg-brand-soft text-brand hover:bg-brand/15",
-  outline: "border border-line bg-white text-ink shadow-xs hover:bg-canvas",
+  outline: "border border-line bg-surface text-ink shadow-xs hover:bg-canvas",
   ghost: "text-ink hover:bg-canvas",
 };
 

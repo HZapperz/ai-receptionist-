@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BRAND } from "@/lib/brand";
 import {
   createClientId,
   decideManagerApproval,
@@ -186,7 +187,7 @@ export function ManagerChat() {
       {/* Top Bar / Status Banner */}
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <div>
-          <h1 className="text-base font-semibold tracking-tight">Royal Pawz Manager</h1>
+          <h1 className="text-base font-semibold tracking-tight">{BRAND.showcase} Manager</h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Your business assistant
           </p>

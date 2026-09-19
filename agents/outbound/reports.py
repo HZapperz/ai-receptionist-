@@ -188,7 +188,7 @@ SAVE_RESEARCH_PLAN_TOOL = Tool(
 
 def _planner_system_prompt(ctx: Ctx) -> str:
     cfg = ctx.config or {}
-    biz_name = cfg.get("name", "Royal Pawz")
+    biz_name = cfg.get("name", "Royal Pawz USA")
     outbound = cfg.get("outbound") or {}
     biz_desc = outbound.get("offer") or "Mobile pet grooming services"
     return (
@@ -282,7 +282,7 @@ SAVE_REPORT_SYNTHESIS_TOOL = Tool(
 
 def _report_system_prompt(ctx: Ctx) -> str:
     cfg = ctx.config or {}
-    biz_name = cfg.get("name", "Royal Pawz")
+    biz_name = cfg.get("name", "Royal Pawz USA")
     outbound = cfg.get("outbound") or {}
     offer = outbound.get("offer") or "Mobile pet grooming services"
     return (
@@ -352,7 +352,7 @@ async def generate_report(task: dict[str, Any]) -> dict[str, Any]:
 Research Type: {research_type}
 Target Area: {area or 'Default Service Area'}
 Business Context:
-- Business Name: {config.get('name', 'Royal Pawz')}
+- Business Name: {config.get('name', 'Royal Pawz USA')}
 - Default Audience: {default_audience}
 - Business Offer: {outbound.get('offer', 'Mobile pet grooming services')}
 
@@ -492,7 +492,7 @@ Call save_research_plan exactly once."""
     policies_info = config.get("policies") or []
 
     our_biz_summary = (
-        f"- Business Name: {config.get('name', 'Royal Pawz')}\n"
+        f"- Business Name: {config.get('name', 'Royal Pawz USA')}\n"
         f"- Core Offer: {outbound.get('offer', 'Mobile pet grooming services')}\n"
         f"- Target Audience: {default_audience}\n"
         f"- Services and their configured base_cents prices (USD cents): {json.dumps(services_info) if services_info else 'Unknown: not configured'}\n"

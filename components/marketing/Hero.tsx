@@ -13,11 +13,12 @@ export function Hero() {
         className="absolute inset-0 -z-10 bg-dot-grid [mask-image:radial-gradient(ellipse_80%_70%_at_50%_0%,black,transparent)]"
       />
       <div aria-hidden="true" className="absolute -top-48 right-[-10%] -z-10 size-[640px] rounded-full bg-brand/10 blur-3xl" />
-      <div aria-hidden="true" className="absolute top-72 -left-40 -z-10 size-[420px] rounded-full bg-violet-400/10 blur-3xl" />
+      {/* Higher alpha than its partner above: the accent is the darker of the two, so /25 lands at the same weight. */}
+      <div aria-hidden="true" className="absolute top-72 -left-40 -z-10 size-[420px] rounded-full bg-brand-accent/25 blur-3xl" />
 
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 pt-14 pb-20 lg:grid-cols-[1.1fr_1fr] lg:gap-10 lg:pt-16 lg:pb-24">
         <div className="animate-fade-up">
-          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted shadow-card">
+          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-muted shadow-card">
             <Sparkles className="size-3.5 text-brand" />
             {BRAND.tagline}
           </p>
@@ -25,7 +26,7 @@ export function Hero() {
           <h1 className="mt-6 text-4xl leading-[1.05] font-semibold tracking-tight text-ink sm:text-5xl xl:text-[3.4rem]">
             <span className="block">Answers every text.</span>
             <span className="block">Books appointments.</span>
-            <span className="block bg-linear-to-r from-brand to-violet-600 bg-clip-text pb-1 text-transparent">
+            <span className="block bg-linear-to-r from-brand to-brand-accent bg-clip-text pb-1 text-transparent">
               Finds new business.
             </span>
           </h1>

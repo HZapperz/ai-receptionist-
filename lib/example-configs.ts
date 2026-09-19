@@ -1,7 +1,7 @@
 import { BRAND } from "./brand";
 
 // The whole business lives in one business_config row; swap the row and the same agents work for
-// another business. Royal Pawz is an excerpt of the real seed (prices in cents). The detailer and the
+// another business. Royal Pawz USA is an excerpt of the real seed (prices in cents). The detailer and the
 // meal-prep company are fictional: show them with an "Example" label.
 export const EXAMPLE_CONFIGS: { id: string; label: string; business: string; config: Record<string, unknown> }[] = [
   {

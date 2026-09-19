@@ -9,6 +9,8 @@
   --color-brand-hover: #4338ca;
   --color-brand-soft: #eef2ff;
   --color-brand-foreground: #ffffff;
+  /* The second half of every brand gradient. Was a literal violet-600 in five places. */
+  --color-brand-accent: #7c3aed;
   --color-surface: #ffffff;
   --color-canvas: #f7f8fa;
   --color-line: #e6e8ec;
@@ -38,14 +40,30 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
+/* The landing page runs its own palette: teal and warm sand, while the app stays indigo. These are
+   the same variables the utilities already read, redefined for one subtree, so shared components
+   (Button, Logo, Badge) follow along here without a second set of classes or a fork. */
+.marketing {
+  --color-brand: #0d7d74;
+  --color-brand-hover: #0a5f58;
+  --color-brand-soft: #edfaf7;
+  --color-brand-accent: #0e7490;
+  --color-surface: #ffffff;
+  --color-canvas: #faf7f2;
+  --color-line: #e6e0d6;
+  --color-ink: #10241f;
+  --color-muted: #5d7873;
+}
+
 /* Stagger entrances: animate-delay-150 waits 150ms. */
 @utility animate-delay-* {
   animation-delay: calc(--value(integer) * 1ms);
 }
 
-/* Faint dot grid for hero and auth backgrounds. */
+/* Faint dot grid for hero and auth backgrounds. Mixed from the ink token, not a literal, so the
+   dots pick up whichever palette the subtree is in. */
 @utility bg-dot-grid {
-  background-image: radial-gradient(rgb(15 18 34 / 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(color-mix(in oklab, var(--color-ink) 10%, transparent) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 

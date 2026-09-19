@@ -54,7 +54,7 @@ export function Agents() {
         {AGENTS.map((a) => (
           <Card key={a.name} className="group flex flex-col p-6 transition-shadow hover:shadow-lift">
             <div className="flex items-center justify-between">
-              <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-brand/10 transition-colors group-hover:bg-brand group-hover:text-white">
+              <span className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-brand/10 transition-colors group-hover:bg-brand group-hover:text-brand-foreground">
                 <a.icon className="size-5" />
               </span>
               <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-medium text-muted ring-1 ring-line">

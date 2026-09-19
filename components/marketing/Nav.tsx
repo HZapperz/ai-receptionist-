@@ -16,7 +16,7 @@ export function Nav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line/70 bg-white/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-line/70 bg-surface/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="rounded-lg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none">
           <Logo />
@@ -52,7 +52,7 @@ export function Nav() {
       </div>
 
       {open && (
-        <div id="mobile-menu" className="border-t border-line bg-white px-6 pt-2 pb-6 md:hidden">
+        <div id="mobile-menu" className="border-t border-line bg-surface px-6 pt-2 pb-6 md:hidden">
           <nav aria-label="Mobile" className="flex flex-col">
             {LINKS.map((l) => (
               <a

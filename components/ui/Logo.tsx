@@ -5,7 +5,7 @@ import { cn } from "./cn";
 export function Logo({ className, withWordmark = true }: { className?: string; withWordmark?: boolean }) {
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <span className="grid size-8 place-items-center rounded-lg bg-linear-to-br from-brand to-violet-600 text-white shadow-sm ring-1 ring-black/5 ring-inset">
+      <span className="grid size-8 place-items-center rounded-lg bg-linear-to-br from-brand to-brand-accent text-brand-foreground shadow-sm ring-1 ring-black/5 ring-inset">
         <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 12h10" />
           <path d="M10 6.5 15.5 12 10 17.5" />

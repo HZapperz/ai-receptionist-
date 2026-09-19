@@ -7,7 +7,7 @@ from agents.runtime.ctx import Ctx
 def system_prompt(ctx: Ctx) -> str:
     cfg = ctx.config or {}
     now = datetime.now(ZoneInfo("America/Chicago")).strftime("%A, %B %-d, %Y %-I:%M %p")
-    name = cfg.get("name", "Royal Pawz")
+    name = cfg.get("name", "Royal Pawz USA")
     tone = cfg.get("tone", "Warm, brief, professional, clear.")
 
     return f"""You are the chief of staff and operations manager for {name}, communicating directly with the owner on their business dashboard.

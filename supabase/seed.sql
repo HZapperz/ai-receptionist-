@@ -1,8 +1,8 @@
--- Royal Pawz business facts. Every agent reads this one row; nobody writes it at runtime.
+-- Royal Pawz USA business facts. Every agent reads this one row; nobody writes it at runtime.
 -- This statement can be run alone to refresh the config (for example after a price change).
 -- Keep the JSON free of single quotes, or double them.
 insert into business_config (id, data) values (1, '{
-  "name": "Royal Pawz",
+  "name": "Royal Pawz USA",
   "phone": "(833) 302-8947",
   "website": "royalpawzusa.com",
   "mailing_address": "TODO",

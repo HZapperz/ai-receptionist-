@@ -42,9 +42,9 @@ export function HowItWorks() {
         <ol className="grid gap-10 md:grid-cols-3 md:gap-8">
           {STEPS.map((s, i) => (
             <li key={s.title} className="relative flex flex-col items-center text-center">
-              <span className="relative grid size-12 place-items-center rounded-full bg-white text-brand shadow-card ring-1 ring-line">
+              <span className="relative grid size-12 place-items-center rounded-full bg-surface text-brand shadow-card ring-1 ring-line">
                 <s.icon className="size-5" />
-                <span className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-brand text-[11px] font-semibold text-white">
+                <span className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-brand text-[11px] font-semibold text-brand-foreground">
                   {i + 1}
                 </span>
               </span>
@@ -73,7 +73,7 @@ export function HowItWorks() {
             {AGENTS.map((a) => (
               <div
                 key={a.name}
-                className="flex flex-col items-center gap-2 rounded-xl border border-line bg-white px-2 py-3 shadow-card"
+                className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface px-2 py-3 shadow-card"
               >
                 <span className="grid size-9 place-items-center rounded-lg bg-brand-soft text-brand">
                   <a.icon className="size-4" />
@@ -94,7 +94,7 @@ export function HowItWorks() {
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {TABLES.map((t) => (
-                <code key={t} className="rounded-md bg-white px-1.5 py-0.5 font-mono text-[11px] text-muted ring-1 ring-line">
+                <code key={t} className="rounded-md bg-surface px-1.5 py-0.5 font-mono text-[11px] text-muted ring-1 ring-line">
                   {t}
                 </code>
               ))}
