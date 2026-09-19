@@ -1,3 +1,5 @@
+import os
+import shutil
 import uuid
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,7 +45,7 @@ class Settings(BaseSettings):
 
     # apify
     APIFY_TOKEN: str = ""
-    APIFY_ACTOR_ID: str = "lukaskrivka/google-maps-with-contact-details"
+    APIFY_ACTOR_ID: str = "compass/crawler-google-places"
 
     # email
     EMAIL_PROVIDER: str = "resend"
@@ -85,6 +87,17 @@ class Settings(BaseSettings):
 
     def lock_path(self) -> Path:
         return self.runtime_dir() / "manager.lock"
+
+    def effective_omp_binary(self) -> str:
+        if self.OMP_BINARY and self.OMP_BINARY != "omp":
+            return self.OMP_BINARY
+        repo_bin = self.receptionist_root() / "node_modules" / ".bin" / "omp"
+        if repo_bin.is_file() and os.access(repo_bin, os.X_OK):
+            return str(repo_bin)
+        system_omp = shutil.which("omp")
+        if system_omp:
+            return system_omp
+        return self.OMP_BINARY
 
 
 settings = Settings()

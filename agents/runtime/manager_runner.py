@@ -117,7 +117,7 @@ class ManagerRunner:
         extension_ts = repo_root / "agents" / "manager" / "extension.ts"
 
         cmd = [
-            settings.OMP_BINARY,
+            settings.effective_omp_binary(),
             "--mode",
             "rpc",
             "--session-dir",

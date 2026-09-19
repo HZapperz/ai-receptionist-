@@ -41,6 +41,7 @@ def main() -> None:
         # Verify manager endpoint is reachable
         mgr = client.get("/manager")
         assert mgr.status_code == 200, f"GET /manager failed: {mgr.status_code}"
+        for i, text in enumerate(TEXTS):
             r = client.post("/sms", data={"From": PHONE, "To": "+18333028947",
                                           "Body": text.format(code=settings.AI_GATE_CODE),
                                           "MessageSid": f"SMsmoke{int(time.time() * 1000)}{i}"})
