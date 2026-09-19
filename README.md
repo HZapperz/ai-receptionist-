@@ -15,7 +15,7 @@ Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen 
    - For local work set `LLM_FAKE=true` (no model key needed), `TWILIO_VALIDATE_SIGNATURE=false`, and any `AI_GATE_CODE`.
    - Leave `TWILIO_AUTH_TOKEN` empty: texts are then logged instead of sent.
    - **Never commit a real value.** This repo is public.
-3. **Database** (once, by whoever set up the Supabase project): in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `supabase/seed.sql`.
+3. **Database:** already applied to the team's Supabase project (AITX-hackathon) on 2026-09-19. For a fresh project, run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `supabase/seed.sql` in the SQL editor.
 4. **Python 3.12:** `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
 5. **Node:** `npm install`
 6. **Run:**
@@ -59,5 +59,6 @@ Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your 
   - New env vars: `AI_GATE_CODE`, `AI_GATE_TTL_HOURS`, `PROD_SMS_WEBHOOK_URL`.
 - **No ngrok step.** Nobody repoints the Twilio number except the owner, through the cutover runbook.
 - **Next.js 16.** create-next-app wrote `AGENTS.md` (Next's agent rules), which `app/CLAUDE.md` imports. `.gitignore` ignores every `.env*` except `.env.example`.
+- **Seed fix.** `supabase/seed.sql` casts `d::date` before converting to Houston time. The BOOTSTRAP version shifted the zone twice, so slots landed at 11pm, 2am and 5am instead of 9am, noon and 3pm.
 - **Python 3.12,** pinned in `.python-version`.
 - **Extras:** `.claude/settings.json` allowlists the common dev commands for Claude Code, and a gitleaks GitHub Action scans every push for secrets.

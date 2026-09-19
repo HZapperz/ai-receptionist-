@@ -30,6 +30,6 @@ on conflict (id) do update set data = excluded.data;
 
 -- two weeks of slots, three a day, capacity 2 (two vans), Houston time
 insert into slots (starts_at, capacity)
-select (d + t) at time zone 'America/Chicago', 2
+select (d::date + t) at time zone 'America/Chicago', 2  -- d::date, or the zone shift applies twice
 from generate_series(current_date + 1, current_date + 14, interval '1 day') as d,
      unnest(array[interval '9 hours', interval '12 hours', interval '15 hours']) as t;
