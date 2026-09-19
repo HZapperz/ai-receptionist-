@@ -31,7 +31,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const email = user?.email ?? "";
 
   return (
-    <div className="flex h-dvh flex-1 overflow-hidden bg-canvas">
+    // No flex-1 here: in the body's column flex it would size this box to its content (11,000px of
+    // trace rows) instead of the screen, and the bottom panels would sit out of reach.
+    <div className="flex h-dvh overflow-hidden bg-canvas">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 lg:px-6">
