@@ -1,0 +1,2 @@
+# Heroku reads Python deps from the repo root; the real list lives with the agents service.
+-r agents/requirements.txt

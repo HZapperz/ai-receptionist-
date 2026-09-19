@@ -57,7 +57,7 @@ Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your 
 
 ## Deploy
 - **Dashboard:** Vercel, with `AGENTS_URL` set to the agents host, the two `NEXT_PUBLIC_SUPABASE_*` vars, `SUPABASE_SERVICE_ROLE_KEY` (for signup; server only, never `NEXT_PUBLIC_`) and, to require the login, `REQUIRE_LOGIN=true`. Add the Vercel URL to Supabase's Auth redirect URLs (see Dashboard login).
-- **Agents service:** an always-on host (Railway or Render), never serverless. From the repo root, the start command is `uvicorn agents.main:app --host 0.0.0.0 --port $PORT`.
+- **Agents service:** an always-on host, never serverless. The demo runs on Heroku (one `basic` web dyno, which never sleeps): `Procfile` and the root `requirements.txt` are for it, and the app's buildpack must be set to `heroku/python` because the root `package.json` would otherwise make Heroku build the dashboard. Deploy with `git push heroku-agents main`. Elsewhere, the start command from the repo root is `uvicorn agents.main:app --host 0.0.0.0 --port $PORT`.
   - Set every var from `.env.example`.
   - `PUBLIC_AGENTS_URL` must be the host's public URL, or Twilio signatures will not validate.
   - Only this host holds the production Twilio token.
