@@ -18,6 +18,8 @@ from agents.db import get_db, load_config
 from agents.manager.prompt import system_prompt
 from agents.manager.queue import queue
 from agents.runtime.ctx import Ctx
+from agents.runtime.manager_session import checkpoint_session, restore_session
+from agents.runtime.omp_config import configure_omp
 from agents.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ class ManagerRunner:
         self.lock_held = False
         self._cmd_counter = 0
         self.active_prompt_id: str | None = None
+        self.session_file: Path | None = None
 
         self.current_event_id: str | None = None
         self.assistant_text: str | None = None
@@ -101,12 +104,9 @@ class ManagerRunner:
         sessions.mkdir(parents=True, exist_ok=True)
 
         session_info = await asyncio.to_thread(queue.ensure_session)
-        session_file = session_info.get("session_file")
-
-        if session_file and not Path(session_file).exists():
-            self.last_error = f"Mapped session file missing on disk: {session_file}"
-            logger.error(self.last_error)
-            raise OmpProcessError(self.last_error)
+        self.session_file = await asyncio.to_thread(
+            restore_session, queue, sessions, session_info
+        )
 
         db = get_db()
         config = load_config(db)
@@ -126,15 +126,13 @@ class ManagerRunner:
             prompt_text,
             "--no-rules",
             "--no-skills",
+            "--no-tools",
             "--no-extensions",
             "--trusted-extension",
             str(extension_ts),
         ]
-        if settings.MANAGER_MODEL:
-            cmd.extend(["--model", settings.MANAGER_MODEL])
-
-        if session_file and Path(session_file).exists():
-            cmd.extend(["--resume", session_file])
+        if self.session_file:
+            cmd.extend(["--resume", str(self.session_file)])
 
         env = dict(os.environ)
         env["RECEPTIONIST_ROOT"] = str(repo_root)
@@ -148,6 +146,8 @@ class ManagerRunner:
         env["TWILIO_FROM_NUMBER"] = settings.TWILIO_FROM_NUMBER
         env["OWNER_PHONE"] = settings.OWNER_PHONE
 
+        model = configure_omp(settings, env)
+        cmd.extend(["--model", model])
         logger.info("Starting OMP manager RPC process")
         self.proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -177,7 +177,8 @@ class ManagerRunner:
         cur_file = data.get("sessionFile")
         if not cur_file:
             raise OmpProcessError("OMP did not report a persistent session path")
-        await asyncio.to_thread(queue.set_session_file, cur_file)
+        self.session_file = Path(cur_file)
+        await asyncio.to_thread(checkpoint_session, queue, self.session_file)
 
         self.running = True
         self.last_error = None
@@ -311,6 +312,9 @@ class ManagerRunner:
 
                 try:
                     await self._process_event(event_id, source, payload)
+                    await asyncio.to_thread(
+                        checkpoint_session, queue, self.session_file, required=True
+                    )
                     await asyncio.to_thread(queue.mark_event_completed, event_id)
                 except Exception as exc:
                     logger.exception("Error processing event %s: %s", event_id, exc)
@@ -431,6 +435,12 @@ class ManagerRunner:
                     pass
             self.proc = None
 
+        if self.session_file:
+            try:
+                await asyncio.to_thread(checkpoint_session, queue, self.session_file)
+            except Exception:
+                logger.exception("Could not checkpoint Manager session during shutdown")
+
         if self.reader_task:
             self.reader_task.cancel()
             try:
@@ -447,6 +457,7 @@ class ManagerRunner:
                 pass
             self.stderr_task = None
 
+        self.session_file = None
         await asyncio.to_thread(self._release_lock)
 
 

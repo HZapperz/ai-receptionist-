@@ -67,6 +67,33 @@ class Queue:
             return result
         return self.ensure_session()
 
+    def get_session_checkpoint(self) -> dict | None:
+        try:
+            rows = (
+                self.db.table("manager_session_checkpoints")
+                .select("file_name,content")
+                .eq("session_id", str(self.session_id))
+                .limit(1)
+                .execute()
+            ).data
+        except Exception as exc:
+            raise QueueError("Manager checkpoints unavailable; apply migration 0005") from exc
+        return self._one(rows)
+
+    def save_session_checkpoint(self, file_name: str, content: str) -> None:
+        try:
+            self.db.table("manager_session_checkpoints").upsert(
+                {
+                    "session_id": str(self.session_id),
+                    "file_name": file_name,
+                    "content": content,
+                    "updated_at": "now()",
+                },
+                on_conflict="session_id",
+            ).execute()
+        except Exception as exc:
+            raise QueueError("Could not durably checkpoint Manager session") from exc
+
     def enqueue_event(
         self,
         source: str,

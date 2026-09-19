@@ -1,6 +1,6 @@
 # CONTRACTS: frozen interfaces
 
-Change anything here only after telling the whole team. Schema source of truth: `supabase/migrations/` (0001_init, 0002_ai_gate, 0003_auth_read, 0004_manager, applied in that order; a schema change is a new numbered file).
+Change anything here only after telling the whole team. Schema source of truth: `supabase/migrations/` (0001_init, 0002_ai_gate, 0003_auth_read, 0004_manager, 0005_manager_checkpoints, applied in that order; a schema change is a new numbered file).
 
 ## Shared state
 
@@ -20,6 +20,10 @@ Agents never call each other. They hand off work through `tasks` and share knowl
 | manager_* | none | none | read, write (service_role) | none (via /agents/manager) |
 
 Dashboard means the browser, signed out (`anon`) or signed in with the dashboard's email login (`authenticated`). Both roles get select only: 0001 and 0002 add `anon_read`, 0003 adds `auth_read` on every domain table including `ai_sessions`. Manager tables (`0004_manager`) are service_role-only; the browser interacts with the manager strictly via `/agents/manager` API. The browser never writes directly to Supabase, logged in or not. The agents service uses the service role key, which bypasses RLS.
+
+`manager_session_checkpoints` stores `{session_id, file_name, content, updated_at}` for the single Manager's private OMP JSONL transcript. It is service-role-only and is not returned by `/manager`. Local session files are disposable: restore the checkpoint before resuming, and persist it before marking an event completed. Startup checks checkpoint storage even for a new session; missing migrations are errors, never a local SQLite fallback. An unused new OMP session has no file mapping until its transcript exists. A legacy mapping with neither its original file nor a checkpoint fails closed. This is a single-backend contract: local locks do not permit multiple dynos or overlapping deployments.
+
+The headless Manager uses `LLM_BASE_URL`, `LLM_API_KEY` (or `FEATHERLESS_API`), and `LLM_MODEL` by default, with text-only receptionist extension tools and no built-in coding tools. `MANAGER_MODEL` overrides this with a native OMP provider/model selector and that provider's environment credentials. `LLM_FAKE` only applies to Python agents, not the OMP process. Complete deployment and migration steps: [HOSTED-DEPLOYMENT.md](HOSTED-DEPLOYMENT.md).
 
 ## Status values
 

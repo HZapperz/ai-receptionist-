@@ -14,12 +14,12 @@ Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen 
 
 1. **Clone:** `git clone https://github.com/HZapperz/ai-receptionist-.git && cd ai-receptionist-`
 2. **Env:** `cp .env.example .env && cp .env.example .env.local`, then fill both with the values the team shared privately.
-   - For local work set `LLM_FAKE=true` (no model key needed), `TWILIO_VALIDATE_SIGNATURE=false`, and any `AI_GATE_CODE`.
+   - For local Python-agent work set `LLM_FAKE=true`, `TWILIO_VALIDATE_SIGNATURE=false`, and any `AI_GATE_CODE`. The OMP Manager still needs real model credentials; it does not use `LLM_FAKE`.
    - Leave `TWILIO_AUTH_TOKEN` empty: texts are then logged instead of sent.
    - **Never commit a real value.** This repo is public.
-3. **Database:** 0001, 0002 and the first seed were applied to the team's Supabase project (AITX-hackathon) on 2026-09-19; `0003_auth_read.sql`, `0004_manager.sql` and the new seed still have to be run there. For a fresh project, run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `0003_auth_read.sql`, then `0004_manager.sql`, then `supabase/seed.sql` in the SQL editor. The seed is safe to re-run, and its `business_config` statement can be run alone to refresh the business facts.
+3. **Database:** apply the missing numbered migrations in `supabase/migrations/` through `0005_manager_checkpoints.sql`, in order. Manager requires `0004` and `0005`; there is no local SQLite fallback. On a fresh project, apply all five before initializing `supabase/seed.sql`. Do not reseed or blindly rerun initial migrations on a live business. See [the hosting handoff](docs/HOSTED-DEPLOYMENT.md).
 4. **Python 3.12:** `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
-5. **Node:** `npm install`
+5. **Node and Bun:** `npm ci`; install Bun 1.3.14 or newer for the OMP Manager.
 6. **Run:**
    - Agents: `uvicorn agents.main:app --reload --port 8000`
    - Dashboard: `npm run dev`, then open http://localhost:3000 and sign in (see Dashboard login)
@@ -69,10 +69,9 @@ Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your 
 
 ## Deploy
 - **Dashboard:** Vercel project `ai-receptionist-` (https://ai-receptionist-kappa-one.vercel.app), which redeploys on every push to main. It needs `AGENTS_URL` set to the agents host, the two `NEXT_PUBLIC_SUPABASE_*` vars, `SUPABASE_SERVICE_ROLE_KEY` (for signup; server only, never `NEXT_PUBLIC_`) and, to require the login, `REQUIRE_LOGIN=true`. Add the Vercel URL to Supabase's Auth redirect URLs (see Dashboard login).
-- **Agents service:** an always-on host, never serverless. The demo runs on Heroku, app `aitx-royalpawz-agents` (one `basic` web dyno, which never sleeps): `Procfile` and the root `requirements.txt` are for it, and the app's buildpack must be set to `heroku/python` because the root `package.json` would otherwise make Heroku build the dashboard. Deploy with `git push heroku-agents main`. Elsewhere, the start command from the repo root is `uvicorn agents.main:app --host 0.0.0.0 --port $PORT`.
-  - Set every var from `.env.example`.
-  - `PUBLIC_AGENTS_URL` must be the host's public URL, or Twilio signatures will not validate.
-  - Only this host holds the production Twilio token.
+- **Agents service:** Heroku app `aitx-royalpawz-agents`, using the backend `Dockerfile` with Python, Bun, and OMP, one always-on web dyno and one Uvicorn worker. Python-only buildpack deployment does not install the Manager runtime. Supabase stores both the event queue and private OMP session checkpoints; local disk is disposable. Do not enable overlapping deploys or multiple backend instances.
+- **Publishing is manual:** GitHub CI is currently Gitleaks only. Follow [docs/HOSTED-DEPLOYMENT.md](docs/HOSTED-DEPLOYMENT.md) from a credentialed machine for migration checks, Config Vars, container publishing, restart verification, and rollback. This repository change does not establish that the live app has been migrated or released.
+- Keep `PUBLIC_AGENTS_URL` equal to the public backend URL for Twilio signature validation. Production Twilio credentials belong only on the backend. The existing unauthenticated agents APIs need a trusted-access/authenticated gateway boundary; dashboard login alone does not protect them.
 
 ## Changes from BOOTSTRAP.md
 - **Three lanes, not four.** Lane 2 (data) is a shared area with no owner. Stub markers are `# STUB: inbound / outbound / manager / shared`, not lane numbers.

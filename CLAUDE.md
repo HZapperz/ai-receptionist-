@@ -28,7 +28,7 @@ The demo borrows Royal Pawz's live toll-free number behind a code word (docs/CON
 - Each lane mounts its own FastAPI router, so agents/main.py rarely needs an edit.
 
 ## Commands
-- Database (fresh project): in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, `0002_ai_gate.sql`, `0003_auth_read.sql`, `0004_manager.sql`, then `supabase/seed.sql`
+- Database (fresh project): in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, `0002_ai_gate.sql`, `0003_auth_read.sql`, `0004_manager.sql`, `0005_manager_checkpoints.sql`, then `supabase/seed.sql`. Existing deployments: apply only missing migrations; see docs/HOSTED-DEPLOYMENT.md.
 - Python env: `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
 - Agents: `uvicorn agents.main:app --reload --port 8000`
 - Dashboard: `npm run dev`
