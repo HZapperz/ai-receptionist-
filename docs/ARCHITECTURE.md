@@ -193,7 +193,7 @@ All three agents run on one loop of about 100 lines on the OpenAI Python client,
 
 Rules that live in the runtime so no agent has to remember them:
 
-- The provider, key and model come from env. Tonight that is Featherless and `Qwen/Qwen3-32B`, which Featherless lists for native tool calling. If tool calls are flaky, changing three env vars moves us to another provider.
+- The provider, key and model come from env. Tonight that is Featherless and `Qwen/Qwen3.8-27B` with thinking on: with thinking off, Qwen skipped tools and made up prices in testing. Featherless returns thinking in a separate `reasoning` field, and the runtime strips any stray think block too. If tool calls are flaky, changing three env vars moves us to another provider.
 - One process-wide semaphore caps model calls at two in flight. Featherless prices concurrency, not tokens: a 32B model costs 2 units per call, so a 4-unit plan allows two at once and rejects the rest with HTTP 429. Check your plan with `GET /v1/plan`.
 - Calls retry three times with jitter on 429 or timeout.
 - Thinking is switched off for Qwen3, and any think block is stripped before text leaves the service. Reasoning must never reach a customer.

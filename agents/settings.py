@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     # model
     LLM_BASE_URL: str = "https://api.featherless.ai/v1"
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "Qwen/Qwen3-32B"
-    LLM_MAX_CONCURRENCY: int = 2
-    LLM_DISABLE_THINKING: bool = True
+    LLM_MODEL: str = "Qwen/Qwen3.8-27B"
+    LLM_MAX_CONCURRENCY: int = 6
+    LLM_DISABLE_THINKING: bool = False  # on: with it off, Qwen skipped tools and made up prices
     LLM_FAKE: bool = False
 
     # supabase

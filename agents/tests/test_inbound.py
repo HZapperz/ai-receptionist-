@@ -16,7 +16,7 @@ from types import SimpleNamespace
 
 from agents.booking import quote
 from agents.inbound.prompt import HOUSTON, system_prompt
-from agents.inbound.routes import trim_reply
+from agents.inbound.routes import disclose, trim_reply
 from agents.inbound.tools import (INBOUND, BookArgs, FindSlotsArgs, LookupLeadArgs, QuoteArgs, _norm, book,
                                   find_slots, lookup_lead)
 from agents.runtime import llm
@@ -98,6 +98,12 @@ def pure_tests():
     assert len(trim_reply(words)) <= 320 and trim_reply(words).endswith("word...")
     assert trim_reply("  Short one.  ") == "Short one."
     print("ok  trim_reply: sentence boundary, then word boundary")
+
+    dctx = Ctx(db=None, config={"name": "Royal Pawz"}, agent="inbound", ref=PHONE, phone=PHONE)
+    assert disclose("A Royal Groom is $175.", dctx) == "Hi! This is Royal Pawz's AI assistant. A Royal Groom is $175."
+    assert disclose("Hi! This is Royal Pawz's AI assistant. Sure.", dctx).count("AI assistant") == 1
+    assert disclose("Hola, soy la asistente de IA.", dctx).startswith("Hola")
+    print("ok  disclose: first reply always says it is an AI assistant")
 
     tomorrow = datetime.now(HOUSTON).date() + timedelta(days=1)
     for cfg in (NEW_CONFIG, OLD_CONFIG, {}):

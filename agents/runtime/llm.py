@@ -3,13 +3,14 @@ import random
 import re
 from types import SimpleNamespace
 
-from openai import APITimeoutError, AsyncOpenAI, RateLimitError
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, InternalServerError, RateLimitError
 
 from agents.settings import settings
 
-_client = AsyncOpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY or "x", timeout=45)
-# A 24B-34B model costs 2 concurrency units per in-flight call on Featherless,
-# so a 4-unit plan allows 2 at once. Confirm with GET /v1/plan.
+_client = AsyncOpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY or "x", timeout=90)
+_RETRY = (RateLimitError, APITimeoutError, APIConnectionError, InternalServerError)
+# A 24B-34B model costs 2 concurrency units per in-flight call on Featherless.
+# The team plan has 100 units (GET /v1/plan), so LLM_MAX_CONCURRENCY=6 is safe.
 _sem = asyncio.Semaphore(settings.LLM_MAX_CONCURRENCY)
 # A think block, or one cut off by max_tokens that runs to the end.
 _THINK = re.compile(r"<think>.*?(?:</think>|\Z)", re.DOTALL)
@@ -31,18 +32,26 @@ def _fake_response():
 async def chat(messages: list[dict], tools: list[dict] | None = None):
     if settings.LLM_FAKE:
         return _fake_response()
-    kwargs: dict = dict(model=settings.LLM_MODEL, messages=messages, temperature=0.2, max_tokens=800)
+    # Thinking tokens count against max_tokens, so leave room for them before the answer.
+    max_tokens = 800 if settings.LLM_DISABLE_THINKING else 3000
+    kwargs: dict = dict(model=settings.LLM_MODEL, messages=messages, temperature=0.2, max_tokens=max_tokens)
     if tools:
         kwargs["tools"] = tools
     if settings.LLM_DISABLE_THINKING:
-        # Qwen3 thinking switch. Verify the key on the provider's docs;
-        # the fallback is to append "/no_think" to the system prompt.
+        # Qwen3 thinking switch (Featherless passes chat_template_kwargs through).
+        # With thinking off, Qwen3-32B skipped tools and made up prices in testing.
         kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
     for attempt in range(4):
         try:
             async with _sem:
-                return await _client.chat.completions.create(**kwargs)
-        except (RateLimitError, APITimeoutError):
+                resp = await _client.chat.completions.create(**kwargs)
+            if resp.choices:
+                return resp
+            # Featherless sometimes answers 200 with {"error": {"code": "no_response"}} and no choices.
+            err = (getattr(resp, "model_extra", None) or {}).get("error") or "no choices in response"
+            if attempt == 3:
+                raise RuntimeError(f"model returned no choices: {err}")
+        except _RETRY:
             if attempt == 3:
                 raise
-            await asyncio.sleep(1.5 * (attempt + 1) + random.random())
+        await asyncio.sleep(1.5 * (attempt + 1) + random.random())

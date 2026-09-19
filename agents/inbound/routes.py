@@ -113,9 +113,20 @@ async def handle_inbound(phone: str) -> None:
         except Exception as e:  # the model or a provider failed: the customer still hears back
             await log_event(ctx, kind="error", name="inbound_run", result={"error": str(e)[:500]})
             reply = GIVE_UP
+        if reply != GIVE_UP and not any(m["role"] == "assistant" for m in history):
+            reply = disclose(reply, ctx)
         await send_and_store(ctx, trim_reply(reply))
         if reply == GIVE_UP:
             await alert_owner(ctx)
+
+
+def disclose(reply: str, ctx: Ctx) -> str:
+    """The first reply must say it is an AI assistant. The prompt asks for it, but
+    the model sometimes skips it, so code makes sure."""
+    if re.search(r"\b(ai|ia)\b|assistant|asistente", reply, re.I):
+        return reply
+    name = (ctx.config or {}).get("name") or "Royal Pawz"
+    return f"Hi! This is {name}'s AI assistant. {reply}"
 
 
 async def alert_owner(ctx: Ctx) -> None:
