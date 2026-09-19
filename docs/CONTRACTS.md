@@ -153,6 +153,7 @@ The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrit
 | SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY | agents/db.py |
 | NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY | lib/supabase.ts, lib/supabase-server.ts, proxy.ts |
 | AGENTS_URL | next.config rewrite |
+| REQUIRE_LOGIN | lib/login.ts (proxy.ts, app/dashboard/layout.tsx): `true` puts the dashboard behind the login; anything else leaves it open |
 | TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, TWILIO_VALIDATE_SIGNATURE, PUBLIC_AGENTS_URL, OWNER_PHONE | agents/inbound/twilio_io.py |
 | AI_GATE_CODE, AI_GATE_TTL_HOURS, PROD_SMS_WEBHOOK_URL | agents/inbound/gate.py |
 | APIFY_TOKEN, APIFY_ACTOR_ID | agents/outbound/apify_io.py |

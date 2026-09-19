@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { loginRequired } from "@/lib/login";
 
 // Next 16's middleware. On every page request it refreshes the Supabase session cookie, keeps
-// signed-out visitors out of /dashboard and /onboarding, and sends signed-in ones past the login.
+// signed-out visitors out of /dashboard and /onboarding (only when REQUIRE_LOGIN=true, see
+// lib/login.ts), and sends signed-in ones past the login.
 // /agents/* never comes through here (see the matcher): it is the rewrite to the agents service.
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -38,7 +40,7 @@ export async function proxy(request: NextRequest) {
     return to;
   };
 
-  if (!user && /^\/(dashboard|onboarding)(\/|$)/.test(pathname)) {
+  if (!user && loginRequired() && /^\/(dashboard|onboarding)(\/|$)/.test(pathname)) {
     return redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
   }
   if (user && (pathname === "/login" || pathname === "/signup")) {
