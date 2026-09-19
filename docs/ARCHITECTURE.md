@@ -62,10 +62,10 @@ Finding leads and sending email are plain code. Only drafting uses the model.
 
 | Step | Trigger | What runs |
 | --- | --- | --- |
-| Find | A `find_leads` task | One Apify actor (Google Maps with contact details) runs for a search term and area. Results are upserted into `leads`. A `draft_emails` task is queued for the new rows. |
+| Find (Outreach) | A `find_leads` task (`payload.report_mode` absent/false) | One Apify actor (`compass/crawler-google-places`) runs for a search term and area. Results are upserted into `leads`. A `draft_emails` task is queued for the new rows. |
+| Report (Market Research) | A `find_leads` task (`payload.report_mode = true`) | One Apify actor (`compass/crawler-google-places`, capped at $0.50 actor cost, 180s timeout, limit 1..50) runs for target term and area. Synthesizes condensed lead report, stores `tasks.result = LeadReport`. Does NOT write `leads` table or trigger outreach. |
 | Draft | A `draft_emails` task | One short agent run per lead, one after another. The agent reads the lead and saves a subject and body. |
 | Send | A person clicks Send | The service checks the allowlist, sends the saved draft, and marks the lead sent. |
-
 **The model never sends email.** Only a click does.
 
 ### Manager
@@ -98,13 +98,13 @@ Who may read and write each table:
 
 | Table | Inbound | Outbound | Manager | Dashboard |
 | --- | --- | --- | --- | --- |
-| business_config | read | read | read | read |
+| business_config | read | read, write (schedule) | read | read, write (schedule) |
 | customers | read, write | none | read | read |
 | messages | read, write | none | read | read |
 | slots | read, take | none | read | read |
 | bookings | read, write | none | read | read |
 | leads | read, mark replied | read, write | read | read |
-| tasks | read own, update status | read own, update status | write | read |
+| tasks | read own, update status | read own, update status | write | read, write (report task) |
 | shared_notes | read, write | read, write | read, write | read |
 | agent_events | write | write | write | read |
 
@@ -220,8 +220,8 @@ The browser only calls `/agents/*` on its own origin. Next.js rewrites that to `
 | In | Out |
 | --- | --- |
 | Inbound SMS agent: info, quote, slots, confirmed booking, lead recognition | Payments of any kind |
-| Outbound agent: Apify leads, personal drafts, click to send | Tenants, real onboarding, social or magic-link login |
-| Manager agent: reports and task hand-offs | Free-form SQL, scheduled jobs, queues |
+| Outbound agent: Apify leads, personal drafts, click to send, automated lead reports schedule | Tenants, real onboarding, social or magic-link login |
+| Manager agent: reports and task hand-offs | Free-form SQL, distributed queue/takeover clusters |
 | Shared notes across agents | Voice, calendar sync |
 | Landing page, email/password login, a demo onboarding that never writes | Any integration with the Royal Pawz production system |
 | Dashboard pages on Realtime: overview, inbox, leads, bookings, activity, manager, settings | Login in front of the agents service's `/agents/*` routes |

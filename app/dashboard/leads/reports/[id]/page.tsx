@@ -19,6 +19,10 @@ export default function LeadReportPermalinkPage() {
   const searchParams = useSearchParams();
   const id = typeof params?.id === "string" ? params.id : Array.isArray(params?.id) ? params.id[0] : "";
   const isEmbed = searchParams.get("embed") === "1";
+  return <ReportContent key={id} id={id} isEmbed={isEmbed} />;
+}
+
+function ReportContent({ id, isEmbed }: { id: string; isEmbed: boolean }) {
 
   const [run, setRun] = useState<ReportRun | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,9 +34,6 @@ export default function LeadReportPermalinkPage() {
     if (!id) return;
     let isMounted = true;
     let timerId: NodeJS.Timeout | null = null;
-    setRun(null);
-    setLoading(true);
-    setError(null);
 
     async function pollLoop() {
       let shouldPoll = false;
@@ -117,7 +118,11 @@ export default function LeadReportPermalinkPage() {
           <AlertTriangle className="size-8 text-red-500" />
           <h2 className="text-base font-semibold">Report Not Found or Error Loading</h2>
           <p className="max-w-md text-xs text-muted">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => setRetry((value) => value + 1)} className="mt-2">
+          <Button variant="outline" size="sm" onClick={() => {
+            setLoading(true);
+            setError(null);
+            setRetry((value) => value + 1);
+          }} className="mt-2">
             <RefreshCw className="size-3.5" />
             <span>Retry</span>
           </Button>

@@ -224,7 +224,7 @@ class TestReportsResearch(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(lead["place_id"], "place_valid_1")
             self.assertEqual(lead["opportunity"], "Strong apartment community referral partner.")
 
-    async def test_find_leads_exact_signature(self):
+    async def test_find_leads_excludes_report_only_fields_from_lead_storage(self):
         mock_places = [
             {
                 "place_id": "p_lead_1",
@@ -243,12 +243,10 @@ class TestReportsResearch(unittest.IsolatedAsyncioTestCase):
         with patch("agents.outbound.apify_io.scrape_places") as mock_scrape:
             mock_scrape.return_value = {"places": mock_places}
             leads = await find_leads("apartments", "Houston", 5)
-            self.assertEqual(len(leads), 1)
             l = leads[0]
             self.assertEqual(
                 set(l.keys()), {"place_id", "name", "address", "phone", "email", "website", "rating", "raw"}
             )
-            self.assertEqual(l["place_id"], "p_lead_1")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 Three agents share one Supabase database:
 
 - **Inbound** answers texts on the business number, quotes, offers slots and books.
-- **Outbound** finds partner leads with Apify, drafts outreach emails, and manages recurring lead research reports and schedules.
+- **Outbound** finds partner leads with Apify, drafts outreach emails, and executes automated market research report schedules.
 - **Manager** is a persistent OMP chief of staff and chat box on the dashboard with durable queues and human-in-the-loop approvals.
 
 The dashboard has a public landing page, email/password login, a demo onboarding and the live dashboard pages.
@@ -34,7 +34,19 @@ The dashboard uses Supabase email/password login; `/` is public. `/dashboard` an
 3. **Auth > URL Configuration:** set the Site URL to the Vercel URL, and add `http://localhost:3000/**` and `https://<vercel-url>/**` to the redirect URLs. Only the fallback's confirmation link (to `/auth/confirm`) needs them.
 4. **Auth > Users > Add user:** create the demo login with auto-confirm on. Share it privately, never in git.
 
-Teammates now sign in (or sign up) to see the dashboard. The agents service has no login; its `/agents/*` routes stay open.
+The agents service has no login; its `/agents/*` routes also stay open through the Next.js rewrite. Use trusted network access or an authenticated gateway before exposing these APIs publicly. `REQUIRE_LOGIN=true` protects dashboard pages, not the agents APIs.
+
+### Scheduled lead research
+1. Open **Leads → Automated Market Research & Reports**.
+2. Set the business search term, location, and result limit (1–50). Choose daily or weekly, local time, and timezone; weekly schedules also select a weekday.
+3. **Save Schedule** saves the current enabled/paused state; **Enable Schedule** starts recurring runs. **Pause Schedule** stops future runs without cancelling research already in progress. **Run Research Now** uses the saved target, even while paused.
+4. Select a run in history to view its condensed AI summary, contact-coverage metrics, category bars, business/source links, recommendations, and limitations. **Permalink** opens `/dashboard/leads/reports/[id]`; append `?embed=1` for the compact report view. Both follow the existing dashboard login setting, not a separate public-sharing mechanism.
+
+The existing outbound `run_agent` foundation synthesizes reports from Apify results. Report jobs never draft or send outreach and do not add records to the separate Saved Leads list. Metrics are calculated from scraped records; AI assessments remain suggestions to verify.
+
+Keep one always-on agents-service instance running. Its lifespan worker checks schedules every 30 seconds; no browser needs to remain open. The local `report_worker.lock` is not a distributed-host lease. Schedule configuration lives in `business_config.data.lead_report_schedule`; run state and reports live in existing `tasks` rows, with no new migration. Interrupted running jobs become failed on restart rather than automatically repeating paid research.
+
+Use `APIFY_TOKEN` and `APIFY_ACTOR_ID=compass/crawler-google-places`, plus the existing database and model credentials (`LLM_FAKE=false` for real reports). Each Actor run has a $0.50 charge cap and 180-second runtime limit; model charges are separate. Failed research remains visible in history with its error.
 
 ### Texting the agent
 The Twilio number is Royal Pawz's **live** toll-free line, (833) 302-8947, and it also carries real customers. **Do not point its webhook anywhere.**

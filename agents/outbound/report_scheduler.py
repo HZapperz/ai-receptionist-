@@ -431,11 +431,17 @@ def recover_pending_reservation(db=None) -> str | None:
         return pid
 
     task = rows[0]
-    if task.get("status") in ("done", "failed"):
+    status = task.get("status")
+    if status == "running":
+        # Task is currently active/running; preserve reservation and do not attempt claim or clear
+        return None
+    elif status in ("done", "failed"):
         complete_scheduled_reservation(pid, db=db)
         return None
+    elif status == "pending":
+        return pid
 
-    return pid
+    return None
 
 
 def cleanup_interrupted_tasks(db=None) -> int:

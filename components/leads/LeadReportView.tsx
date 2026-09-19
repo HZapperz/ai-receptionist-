@@ -285,6 +285,10 @@ export function LeadReportView({
             <Info className="size-4 text-muted" aria-hidden="true" />
             <h2 className="text-sm font-semibold">Data Scope & Limitations</h2>
           </div>
+          <div className="mb-3 rounded-md bg-amber-50/70 border border-amber-200/80 p-2.5 text-xs text-amber-900 flex items-start gap-2">
+            <AlertTriangle className="size-3.5 shrink-0 text-amber-600 mt-0.5" aria-hidden="true" />
+            <span>AI assessments are suggestions; verify business details and partnership fit before outreach.</span>
+          </div>
           {limitations.length === 0 ? (
             <p className="text-xs text-muted">Standard Google Places search bounds applied without additional limitations.</p>
           ) : (
@@ -413,30 +417,32 @@ function LeadCard({ lead }: { lead: ReportLead }) {
           </span>
         )}
 
-        {websiteUrl && (
-          <a
-            href={websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 font-medium text-emerald-600 hover:text-emerald-800 hover:underline ml-auto"
-          >
-            <Globe className="size-3.5" aria-hidden="true" />
-            <span>Website</span>
-            <ArrowUpRight className="size-3" aria-hidden="true" />
-          </a>
-        )}
+        <div className="flex items-center gap-3 ml-auto flex-wrap">
+          {websiteUrl && (
+            <a
+              href={websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 font-medium text-emerald-600 hover:text-emerald-800 hover:underline"
+            >
+              <Globe className="size-3.5" aria-hidden="true" />
+              <span>Website</span>
+              <ArrowUpRight className="size-3" aria-hidden="true" />
+            </a>
+          )}
 
-        {sourceUrl && !websiteUrl && (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-muted hover:text-ink hover:underline ml-auto"
-          >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-            <span>Google Maps</span>
-          </a>
-        )}
+          {sourceUrl && (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-muted hover:text-ink hover:underline"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+              <span>Google Maps</span>
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

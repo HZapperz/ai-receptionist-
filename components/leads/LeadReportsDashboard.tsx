@@ -75,7 +75,6 @@ export function LeadReportsDashboard() {
 
     return () => {
       isMounted = false;
-      requestVersion.current++;
       if (timerId) clearTimeout(timerId);
     };
   }, []);
@@ -98,7 +97,7 @@ export function LeadReportsDashboard() {
             </span>
           ) : (
             <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-muted ring-1 ring-line">
-              Schedule Paused
+              {data?.schedule ? "Schedule Paused" : "Not configured"}
             </span>
           )}
         </div>

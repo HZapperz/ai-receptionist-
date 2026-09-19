@@ -128,7 +128,8 @@ An error is always `{"error": str}`. Tools never raise to the model.
 
 | kind | for_agent | payload | Effect |
 | --- | --- | --- | --- |
-| find_leads | outbound | `{"term": str, "area": str, "limit": int}` | Apify run, leads upserted on place_id, then a draft_emails task for the new rows |
+| find_leads (outreach) | outbound | `{"term": str, "area": str, "limit": int}` | Apify run, leads upserted on place_id, then a draft_emails task for the new rows |
+| find_leads (report) | outbound | `{"report_mode": true, "term": str, "area": str, "limit": int}` | Apify run (`compass/crawler-google-places`, capped at $0.50 cost, 180s timeout, limit 1..50), synthesizes condensed market report, stores `tasks.result = LeadReport`. Does NOT touch leads table, draft emails, or trigger outreach |
 | draft_emails | outbound | `{"lead_ids": [str]}` or `{"lead_ids": "all_new"}` | One drafting run per lead, one after another |
 | follow_up | inbound | `{"phone": str, "reason": str}` | Inbound agent texts a follow-up, for example to someone who got a quote and did not book. Result `{"ok": true, "sent": bool, "text": str}`, or `{"error": "not_in_ai_session"}` without a model call when the phone has no active AI session |
 
@@ -144,13 +145,17 @@ An error is always `{"error": str}`. Tools never raise to the model.
 | POST /outbound/find | dashboard | Body `{"term", "area", "limit"}`. Creates and starts a find_leads task |
 | POST /outbound/draft | dashboard | Body `{"lead_ids"}`. Creates and starts a draft_emails task |
 | POST /outbound/send | dashboard | Body `{"lead_id"}`. Checks SEND_ALLOWLIST, sends the saved draft, sets status `sent` |
-| GET /outbound/reports | dashboard | Returns `{schedule, runs, defaults, worker}` state snapshot |
-| PUT /outbound/reports/schedule | dashboard | Updates schedule config `{term, area, limit, cadence, time, timezone, weekday, enabled}`, calculates next run timestamp |
-| POST /outbound/reports/run | dashboard | Triggers manual report run immediately (409 if run active) |
+| GET /outbound/reports | dashboard | Returns `{schedule, runs, defaults, worker}` state snapshot (runs bounded to latest 20) |
+| PUT /outbound/reports/schedule | dashboard | Updates schedule config `{term, area, limit, cadence, time, timezone, weekday, enabled}`, calculates IANA next_run_at (Monday=0) |
+| POST /outbound/reports/run | dashboard | Triggers manual report run immediately using saved schedule (400 if no schedule, 409 if active run) |
 | GET /outbound/reports/{id} | dashboard | Returns ReportRun details or 404 |
 | POST /tasks/run | dashboard | Runs any pending tasks. The manual kick |
 
-The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrites to `AGENTS_URL`. `proxy.ts` (the dashboard login guard) excludes `/agents`, so these routes are not behind the login.
+The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrites to `AGENTS_URL`. `proxy.ts` excludes `/agents` from the dashboard login guard; these APIs require trusted network access or gateway authentication before public exposure. Report detail views at `/dashboard/leads/reports/[id]` (optional `?embed=1`) follow the existing `REQUIRE_LOGIN` setting, not a separate public-share mechanism.
+
+The report worker runs in FastAPI lifespan on a single always-on instance, with a local `report_worker.lock` and 30-second idle poll interval. No distributed-host takeover is supported. Schedule inputs are daily/weekly cadence, `HH:MM` local time, IANA timezone, Monday=0 weekday, enabled flag, search term, area, and limit 1–50. Storage is `business_config.data.lead_report_schedule`; task creation uses an atomic reservation and task execution claims pending rows. Saving a schedule preserves in-flight reservation metadata and unrelated business configuration. Persistence failure returns 503 rather than acknowledging an unapplied schedule.
+
+Reports use existing `tasks.kind=find_leads` with `payload.report_mode=true`, `tasks.result` for the report or failure, and `agent_events.ref` for the task's agent trace. No new migration or Manager session is required. A paused schedule can run manually; pausing never cancels an in-flight run. Running jobs interrupted by a service restart become failed, avoiding automatic repeated paid scraping.
 
 ## Env vars
 

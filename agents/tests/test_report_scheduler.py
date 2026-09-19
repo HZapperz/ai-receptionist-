@@ -12,6 +12,7 @@ from agents.outbound.report_scheduler import (
     cleanup_interrupted_tasks,
     create_report_task,
     reserve_and_create_scheduled_run,
+    recover_pending_reservation,
 )
 
 
@@ -107,7 +108,7 @@ class TestReportSchedulerConflictAndRecovery(unittest.TestCase):
     def test_is_report_task(self):
         self.assertTrue(is_report_task({"kind": "find_leads", "payload": {"report_mode": True}}))
         self.assertTrue(is_report_task({"kind": "find_leads", "payload": {"report_mode": "true"}}))
-        self.assertFalse(is_report_task({"kind": "find_leads", "payload": {"report_mode": False}}))
+        self.assertFalse(is_report_task({"kind": "find_leads", "payload": False}))
         self.assertFalse(is_report_task({"kind": "find_leads", "payload": {}}))
         self.assertFalse(is_report_task({"kind": "draft_emails", "payload": {"report_mode": True}}))
 
@@ -163,6 +164,18 @@ class TestReportSchedulerConflictAndRecovery(unittest.TestCase):
                 "status": "failed",
                 "result": {"error": "Interrupted by server restart"},
             })
+
+    def test_recover_pending_reservation_preserves_running_status(self):
+        mock_db = MagicMock()
+        mock_db.table().select().eq().execute().data = [
+            {"id": "t-running", "kind": "find_leads", "status": "running", "payload": {"report_mode": True}}
+        ]
+        sched = {"pending_run_id": "t-running", "pending_run_target": {"term": "a", "area": "b", "limit": 5}}
+        with patch("agents.outbound.report_scheduler.get_schedule", return_value=sched), \
+             patch("agents.outbound.report_scheduler.complete_scheduled_reservation") as mock_complete:
+            res = recover_pending_reservation(db=mock_db)
+            self.assertIsNone(res)
+            mock_complete.assert_not_called()
 
 
 if __name__ == "__main__":

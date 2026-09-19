@@ -15,7 +15,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge, Button, Input, Label } from "@/components/ui";
 import {
   COMMON_TIMEZONES,
@@ -46,63 +46,31 @@ export function LeadReportScheduleCard({
   onRunTriggered,
   isRunActive = false,
 }: LeadReportScheduleCardProps) {
-  const defaultTz =
-    typeof window !== "undefined"
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago"
-      : "America/Chicago";
-
-  const [term, setTerm] = useState(schedule?.term || defaults.term || "");
-  const [area, setArea] = useState(schedule?.area || defaults.area || "");
-  const [limit, setLimit] = useState<number>(schedule?.limit || 20);
-  const [cadence, setCadence] = useState<Cadence>(schedule?.cadence || "daily");
-  const [time, setTime] = useState(schedule?.time || "09:00");
-  const [timezone, setTimezone] = useState(schedule?.timezone || defaultTz);
-  const [weekday, setWeekday] = useState<number>(schedule?.weekday ?? 0);
-  const [enabled, setEnabled] = useState<boolean>(schedule?.enabled ?? true);
+  const saved: ScheduleInput = schedule ?? {
+    term: defaults.term,
+    area: defaults.area,
+    limit: 20,
+    cadence: "daily",
+    time: "09:00",
+    timezone: "America/Chicago",
+    weekday: 0,
+    enabled: true,
+  };
+  const [draft, setDraft] = useState<ScheduleInput | null>(null);
+  const { term, area, limit, cadence, time, timezone, weekday, enabled } = draft ?? saved;
+  const isDirty = draft !== null;
 
   const [saving, setSaving] = useState(false);
   const [runningNow, setRunningNow] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Track if user has touched any input
-  const [isDirty, setDirty] = useState(false);
-
-  // Sync state only when schedule prop is first loaded or updated externally, if user hasn't modified fields
-  useEffect(() => {
-    if (schedule && !isDirty) {
-      setTerm(schedule.term);
-      setArea(schedule.area);
-      setLimit(schedule.limit);
-      setCadence(schedule.cadence);
-      setTime(schedule.time);
-      setTimezone(schedule.timezone);
-      setWeekday(schedule.weekday);
-      setEnabled(schedule.enabled);
-    }
-  }, [schedule, isDirty]);
+  function updateDraft(changes: Partial<ScheduleInput>) {
+    setDraft((current) => ({ ...saved, ...current, ...changes }));
+  }
 
   function resetToSaved() {
-    if (schedule) {
-      setTerm(schedule.term);
-      setArea(schedule.area);
-      setLimit(schedule.limit);
-      setCadence(schedule.cadence);
-      setTime(schedule.time);
-      setTimezone(schedule.timezone);
-      setWeekday(schedule.weekday);
-      setEnabled(schedule.enabled);
-    } else {
-      setTerm(defaults.term || "");
-      setArea(defaults.area || "");
-      setLimit(20);
-      setCadence("daily");
-      setTime("09:00");
-      setTimezone(defaultTz);
-      setWeekday(0);
-      setEnabled(true);
-    }
-    setDirty(false);
+    setDraft(null);
   }
 
   async function handleSave(newEnabledState?: boolean) {
@@ -125,8 +93,7 @@ export function LeadReportScheduleCard({
 
     try {
       const updated = await saveReportSchedule(payload);
-      setDirty(false);
-      setEnabled(updated.enabled);
+      setDraft(null);
       onScheduleUpdated(updated);
       setSuccessMsg(targetEnabled ? "Report schedule saved & active!" : "Report schedule saved & paused.");
       setTimeout(() => setSuccessMsg(null), 4000);
@@ -173,23 +140,23 @@ export function LeadReportScheduleCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {worker?.running ? (
+          {worker?.error ? (
+            <Badge tone="danger" className="text-xs" title={worker.error}>
+              Worker Alert
+            </Badge>
+          ) : worker?.running ? (
             <Badge tone="success" className="text-xs">
               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />
               Scheduler Active
             </Badge>
-          ) : worker?.error ? (
-            <Badge tone="danger" className="text-xs" title={worker.error}>
-              Worker Alert
-            </Badge>
           ) : (
             <Badge tone="neutral" className="text-xs">
-              Scheduler Ready
+              Scheduler Offline
             </Badge>
           )}
 
-          <Badge tone={enabled ? "brand" : "neutral"} className="text-xs">
-            {enabled ? "Schedule Enabled" : "Paused"}
+          <Badge tone={schedule?.enabled ? "brand" : "neutral"} className="text-xs">
+            {!schedule ? "Not configured" : schedule.enabled ? "Schedule Enabled" : "Paused"}
           </Badge>
         </div>
       </div>
@@ -223,8 +190,7 @@ export function LeadReportScheduleCard({
             id="search-term"
             value={term}
             onChange={(e) => {
-              setDirty(true);
-              setTerm(e.target.value);
+              updateDraft({ term: e.target.value });
             }}
             placeholder="e.g. pet-friendly apartment communities"
             className="text-xs"
@@ -240,8 +206,7 @@ export function LeadReportScheduleCard({
             id="search-area"
             value={area}
             onChange={(e) => {
-              setDirty(true);
-              setArea(e.target.value);
+              updateDraft({ area: e.target.value });
             }}
             placeholder="e.g. Houston, TX"
             className="text-xs"
@@ -260,8 +225,7 @@ export function LeadReportScheduleCard({
             max={50}
             value={limit}
             onChange={(e) => {
-              setDirty(true);
-              setLimit(Math.max(1, Math.min(50, Number(e.target.value))));
+              updateDraft({ limit: Math.max(1, Math.min(50, Number(e.target.value))) });
             }}
             className="text-xs"
           />
@@ -276,8 +240,7 @@ export function LeadReportScheduleCard({
             id="cadence-select"
             value={cadence}
             onChange={(e) => {
-              setDirty(true);
-              setCadence(e.target.value as Cadence);
+              updateDraft({ cadence: e.target.value as Cadence });
             }}
             className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink shadow-xs focus:border-brand focus:outline-none"
           >
@@ -296,8 +259,7 @@ export function LeadReportScheduleCard({
               id="weekday-select"
               value={weekday}
               onChange={(e) => {
-                setDirty(true);
-                setWeekday(Number(e.target.value));
+                updateDraft({ weekday: Number(e.target.value) });
               }}
               className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink shadow-xs focus:border-brand focus:outline-none"
             >
@@ -320,8 +282,7 @@ export function LeadReportScheduleCard({
             type="time"
             value={time}
             onChange={(e) => {
-              setDirty(true);
-              setTime(e.target.value);
+              updateDraft({ time: e.target.value });
             }}
             className="text-xs"
           />
@@ -336,8 +297,7 @@ export function LeadReportScheduleCard({
             id="timezone-select"
             value={timezone}
             onChange={(e) => {
-              setDirty(true);
-              setTimezone(e.target.value);
+              updateDraft({ timezone: e.target.value });
             }}
             className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink shadow-xs focus:border-brand focus:outline-none"
           >
