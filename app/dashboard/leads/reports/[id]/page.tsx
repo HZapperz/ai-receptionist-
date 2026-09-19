@@ -99,12 +99,12 @@ function ReportContent({ id, isEmbed }: { id: string; isEmbed: boolean }) {
     <div className="flex h-full flex-col gap-5 p-6">
       <div className="flex items-center justify-between gap-4">
         <PageHeader
-          title="Lead Market Intelligence Report"
+          title="Market Intelligence & Research Report"
           description={`Report permalink for research run ${id}`}
         />
         <Button href="/dashboard/leads" variant="outline" size="sm">
           <ArrowLeft className="size-3.5" aria-hidden="true" />
-          <span>Back to Leads</span>
+          <span>Back to Research & Leads</span>
         </Button>
       </div>
 

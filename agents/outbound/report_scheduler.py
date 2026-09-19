@@ -103,15 +103,36 @@ def validate_schedule_input(data: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(enabled_val, bool):
         raise ValueError("enabled must be a boolean (true or false)")
 
-    term = str(data.get("term") or "").strip()
-    if not term:
-        raise ValueError("term cannot be empty")
+    if "research_type" in data and data["research_type"] is not None:
+        research_type = str(data["research_type"]).strip()
+        if research_type not in ("lead_discovery", "competitor_analysis", "custom"):
+            raise ValueError("research_type must be 'lead_discovery', 'competitor_analysis', or 'custom'")
+    else:
+        research_type = "lead_discovery"
 
+    term_raw = str(data.get("term") or "").strip()
+
+    if "objective" in data and data["objective"] is not None:
+        obj_raw = str(data["objective"]).strip()
+        if not obj_raw:
+            raise ValueError("objective cannot be empty")
+    else:
+        if term_raw:
+            obj_raw = f"Discover market leads for {term_raw}"
+        else:
+            raise ValueError("objective cannot be empty")
+
+    if len(obj_raw) > 2000:
+        raise ValueError("objective cannot exceed 2000 characters")
+
+    term = term_raw if term_raw else obj_raw[:120]
     area = str(data.get("area") or "").strip()
     if not area:
         raise ValueError("area cannot be empty")
 
     return {
+        "objective": obj_raw,
+        "research_type": research_type,
         "term": term,
         "area": area,
         "limit": limit,
@@ -122,16 +143,20 @@ def validate_schedule_input(data: dict[str, Any]) -> dict[str, Any]:
         "enabled": enabled_val,
     }
 
-
 def get_schedule(db=None) -> dict[str, Any] | None:
     if db is None:
         db = get_db()
     config = load_config(db)
     sched = config.get("lead_report_schedule")
     if isinstance(sched, dict):
-        return sched
+        res = dict(sched)
+        if not res.get("objective"):
+            term = res.get("term", DEFAULT_TERM)
+            res["objective"] = f"Discover market leads for {term}"
+        if not res.get("research_type"):
+            res["research_type"] = "lead_discovery"
+        return res
     return None
-
 
 def save_schedule(schedule_dict: dict[str, Any], db=None) -> dict[str, Any]:
     """Atomic CAS update of schedule configuration preserving runtime-owned fields and business_config."""
@@ -171,8 +196,7 @@ def get_defaults(db=None) -> dict[str, str]:
     else:
         area = DEFAULT_AREA
 
-    return {"term": term, "area": area}
-
+    return {"objective": term, "term": term, "area": area}
 
 def is_report_task(task: dict[str, Any]) -> bool:
     if task.get("kind") != "find_leads":
@@ -201,19 +225,25 @@ def _format_report_run(task: dict[str, Any]) -> dict[str, Any]:
     if status == "failed" and not error:
         error = "Report generation failed"
 
+    target_term = payload.get("term", DEFAULT_TERM)
+    target_obj = payload.get("objective")
+    if not target_obj:
+        target_obj = f"Discover market leads for {target_term}"
+
     return {
         "id": str(task["id"]),
         "status": status,
         "created_at": task.get("created_at"),
         "target": {
-            "term": payload.get("term", DEFAULT_TERM),
+            "objective": target_obj,
+            "research_type": payload.get("research_type", "lead_discovery"),
+            "term": target_term,
             "area": payload.get("area", DEFAULT_AREA),
             "limit": payload.get("limit", DEFAULT_LIMIT),
         },
         "report": report,
         "error": error,
     }
-
 
 def list_report_runs(db=None, limit: int = 20) -> list[dict[str, Any]]:
     """Return latest report runs scanning find_leads tasks without hiding reports behind non-report runs."""
@@ -257,15 +287,19 @@ def has_active_report_run(db=None, ignore_task_id: str | None = None) -> bool:
     return False
 
 
-def create_report_task(term: str, area: str, limit: int, created_by: str = "scheduler", task_id: str | None = None, db=None) -> dict[str, Any]:
+def create_report_task(term: str, area: str, limit: int, created_by: str = "scheduler", task_id: str | None = None, objective: str | None = None, research_type: str = "lead_discovery", db=None) -> dict[str, Any]:
     if db is None:
         db = get_db()
     tid = task_id or str(uuid.uuid4())
     if has_active_report_run(db, ignore_task_id=tid):
         raise RuntimeError("Active report run already in progress")
 
+    obj = objective or (f"Discover market leads for {term}" if term else DEFAULT_TERM)
+
     payload = {
         "report_mode": True,
+        "objective": obj,
+        "research_type": research_type or "lead_discovery",
         "term": term,
         "area": area,
         "limit": limit,
@@ -281,11 +315,13 @@ def create_report_task(term: str, area: str, limit: int, created_by: str = "sche
     return inserted
 
 
-def reserve_and_create_manual_run(term: str, area: str, limit: int, db=None) -> dict[str, Any]:
+def reserve_and_create_manual_run(term: str, area: str, limit: int, objective: str | None = None, research_type: str = "lead_discovery", db=None) -> dict[str, Any]:
     """Atomic cross-process CAS reservation and task creation for manual report run."""
     if db is None:
         db = get_db()
     task_id = str(uuid.uuid4())
+
+    obj = objective or (f"Discover market leads for {term}" if term else DEFAULT_TERM)
 
     for _ in range(5):
         if has_active_report_run(db, ignore_task_id=task_id):
@@ -306,16 +342,21 @@ def reserve_and_create_manual_run(term: str, area: str, limit: int, db=None) -> 
         new_data = dict(snapshot)
         updated_sched = dict(curr_sched)
         updated_sched["pending_run_id"] = task_id
-        updated_sched["pending_run_target"] = {"term": term, "area": area, "limit": limit}
+        updated_sched["pending_run_target"] = {
+            "objective": obj,
+            "research_type": research_type or "lead_discovery",
+            "term": term,
+            "area": area,
+            "limit": limit,
+        }
         new_data["lead_report_schedule"] = updated_sched
 
         res = db.table("business_config").update({"data": new_data}).eq("id", 1).eq("data", serialized_orig).execute()
         if res.data:
-            inserted = create_report_task(term, area, limit, created_by="manual", task_id=task_id, db=db)
+            inserted = create_report_task(term, area, limit, created_by="manual", task_id=task_id, objective=obj, research_type=research_type, db=db)
             return inserted
 
     raise RuntimeError("Failed to persist report run reservation due to write contention")
-
 
 def reserve_and_create_scheduled_run(db=None) -> tuple[str, dict[str, Any]] | None:
     """Atomic cross-process CAS reservation of a due schedule run."""
@@ -357,6 +398,8 @@ def reserve_and_create_scheduled_run(db=None) -> tuple[str, dict[str, Any]] | No
             return None
 
         term = curr_sched.get("term", DEFAULT_TERM)
+        obj = curr_sched.get("objective") or f"Discover market leads for {term}"
+        res_type = curr_sched.get("research_type", "lead_discovery")
         area = curr_sched.get("area", DEFAULT_AREA)
         limit = curr_sched.get("limit", DEFAULT_LIMIT)
         next_next_run_at = compute_next_run_at(curr_sched, now_utc)
@@ -365,13 +408,19 @@ def reserve_and_create_scheduled_run(db=None) -> tuple[str, dict[str, Any]] | No
         updated_sched = dict(curr_sched)
         updated_sched["next_run_at"] = next_next_run_at
         updated_sched["pending_run_id"] = task_id
-        updated_sched["pending_run_target"] = {"term": term, "area": area, "limit": limit}
+        updated_sched["pending_run_target"] = {
+            "objective": obj,
+            "research_type": res_type,
+            "term": term,
+            "area": area,
+            "limit": limit,
+        }
         new_data["lead_report_schedule"] = updated_sched
 
         res = db.table("business_config").update({"data": new_data}).eq("id", 1).eq("data", serialized_orig).execute()
         if res.data:
             try:
-                task_row = create_report_task(term, area, limit, created_by="scheduler", task_id=task_id, db=db)
+                task_row = create_report_task(term, area, limit, created_by="scheduler", task_id=task_id, objective=obj, research_type=res_type, db=db)
                 return task_id, task_row
             except Exception as exc:
                 logger.error("Failed to insert scheduled task row after CAS reservation: %s", exc)
@@ -416,20 +465,26 @@ def recover_pending_reservation(db=None) -> str | None:
 
     pid = str(sched["pending_run_id"])
     ptarget = sched.get("pending_run_target") or {}
-    term = ptarget.get("term", DEFAULT_TERM)
-    area = ptarget.get("area", DEFAULT_AREA)
-    limit = ptarget.get("limit", DEFAULT_LIMIT)
+    term = ptarget.get("term") or sched.get("term", DEFAULT_TERM)
+    res_type = ptarget.get("research_type") or "lead_discovery"
+    if ptarget.get("objective"):
+        obj = ptarget["objective"]
+    elif ptarget.get("term"):
+        obj = f"Discover market leads for {ptarget['term']}"
+    else:
+        obj = sched.get("objective") or f"Discover market leads for {term}"
+    area = ptarget.get("area") or sched.get("area", DEFAULT_AREA)
+    limit = ptarget.get("limit") or sched.get("limit", DEFAULT_LIMIT)
 
     rows = db.table("tasks").select("*").eq("id", pid).execute().data
     if not rows:
         logger.info("Recovering missing scheduled task row for reserved run %s", pid)
         try:
-            create_report_task(term, area, limit, created_by="scheduler", task_id=pid, db=db)
+            create_report_task(term, area, limit, created_by="scheduler", task_id=pid, objective=obj, research_type=res_type, db=db)
         except Exception as exc:
             logger.error("Failed to recreate task row for reserved run %s: %s", pid, exc)
             return None
         return pid
-
     task = rows[0]
     status = task.get("status")
     if status == "running":

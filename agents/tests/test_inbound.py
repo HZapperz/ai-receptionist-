@@ -124,7 +124,7 @@ def pure_tests():
 
     # The loop runs text tool calls and never lets markup or JSON reach a customer.
     def fake_chat(replies: list[str], seen: list):
-        async def chat(messages, tools=None):
+        async def chat(messages, tools=None, max_tokens=None):
             seen.append(list(messages))
             msg = SimpleNamespace(content=replies.pop(0), tool_calls=None)
             return SimpleNamespace(choices=[SimpleNamespace(message=msg)])

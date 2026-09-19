@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, FileText, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, History, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LeadReportScheduleCard } from "@/components/leads/LeadReportScheduleCard";
 import { LeadReportHistory } from "@/components/leads/LeadReportHistory";
@@ -17,6 +17,7 @@ export function LeadReportsDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const requestVersion = useRef(0);
 
@@ -85,33 +86,48 @@ export function LeadReportsDashboard() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-none">
       {/* Top Status Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-canvas p-3 rounded-xl border border-line">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-canvas p-3.5 rounded-xl border border-line">
+        <div className="flex items-center gap-2 flex-wrap">
           <Sparkles className="size-4 text-brand" />
-          <span className="text-xs font-semibold text-ink">Automated Lead Market Intelligence</span>
+          <span className="text-xs font-semibold text-ink">Automated Market Research & Intelligence</span>
           {data?.schedule?.enabled ? (
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-600/20">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-600/20">
               Active Schedule
             </span>
           ) : (
-            <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] font-medium text-muted ring-1 ring-line">
+            <span className="rounded-full bg-canvas px-2.5 py-0.5 text-[11px] font-medium text-muted ring-1 ring-line">
               {data?.schedule ? "Schedule Paused" : "Not configured"}
             </span>
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={manualRefresh}
-          disabled={loading}
-          className="text-xs"
-        >
-          <RefreshCw className={isPolling || loading ? "size-3.5 animate-spin" : "size-3.5"} />
-          <span>Refresh Data</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {data?.runs && data.runs.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistory(!showHistory)}
+              className="text-xs"
+            >
+              <History className="size-3.5" />
+              <span>History ({data.runs.length})</span>
+              {showHistory ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={manualRefresh}
+            disabled={loading}
+            className="text-xs"
+          >
+            <RefreshCw className={isPolling || loading ? "size-3.5 animate-spin" : "size-3.5"} />
+            <span>Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -147,52 +163,64 @@ export function LeadReportsDashboard() {
             isRunActive={isRunActive}
           />
 
-          {/* Grid Layout: History List & Visual Report Viewer */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* Left Column: History */}
-            <div className="lg:col-span-1 space-y-4">
+          {/* Toggleable / Expandable Compact History Selector */}
+          {(showHistory || (!selectedRun && data?.runs && data.runs.length > 0)) && (
+            <div className="w-full">
               <LeadReportHistory
                 runs={data?.runs || []}
                 selectedRunId={selectedRunId}
-                onSelectRun={(run) => setSelectedRunId(run.id)}
+                onSelectRun={(run) => {
+                  setSelectedRunId(run.id);
+                  // Auto-collapse history on mobile after selection for seamless reading
+                }}
                 onRefreshAll={manualRefresh}
                 isPolling={isPolling}
               />
             </div>
+          )}
 
-            {/* Right Column: Visual Report Viewer */}
-            <div className="lg:col-span-2">
-              {selectedRun?.report ? (
-                <LeadReportView
-                  report={selectedRun.report}
-                  target={selectedRun.target}
-                  createdAt={selectedRun.created_at}
-                />
-              ) : selectedRun ? (
-                <div className="rounded-xl border border-line bg-surface p-8 text-center text-xs text-muted space-y-2">
-                  {selectedRun.status === "pending" || selectedRun.status === "running" ? (
-                    <Loader2 className="size-6 animate-spin text-brand mx-auto" />
-                  ) : (
-                    <AlertCircle className="size-6 text-red-500 mx-auto" />
-                  )}
-                  <p className="font-semibold text-ink">Run Status: {selectedRun.status}</p>
-                  <p>
-                    Target: {selectedRun.target.term} ({selectedRun.target.area})
+          {/* Full-Width Report Viewer */}
+          <div className="w-full">
+            {selectedRun?.report ? (
+              <LeadReportView
+                report={selectedRun.report}
+                target={selectedRun.target}
+                createdAt={selectedRun.created_at}
+              />
+            ) : selectedRun ? (
+              <div className="rounded-xl border border-line bg-surface p-10 text-center text-xs text-muted space-y-3">
+                {selectedRun.status === "pending" || selectedRun.status === "running" ? (
+                  <div className="space-y-2">
+                    <Loader2 className="size-7 animate-spin text-brand mx-auto" />
+                    <p className="font-semibold text-ink text-sm">Research Run In Progress...</p>
+                    <p className="max-w-md mx-auto text-muted">
+                      Executing agent search, web scraping, evidence synthesis, and competitor positioning analysis.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <AlertCircle className="size-7 text-red-500 mx-auto" />
+                    <p className="font-semibold text-ink text-sm">Run Failed: {selectedRun.status}</p>
+                  </div>
+                )}
+                <p className="text-muted">
+                  Objective / Target: <strong className="text-ink">{selectedRun.target.objective || selectedRun.target.term}</strong> ({selectedRun.target.area})
+                </p>
+                {selectedRun.error && (
+                  <p className="text-red-600 mt-2 font-mono text-[11px] bg-red-50 p-3 rounded-lg border border-red-200 max-w-lg mx-auto">
+                    {selectedRun.error}
                   </p>
-                  {selectedRun.error && (
-                    <p className="text-red-600 mt-2 font-mono text-[11px]">{selectedRun.error}</p>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-line bg-surface p-10 text-center text-xs text-muted space-y-2">
-                  <FileText className="size-8 mx-auto text-muted/50" />
-                  <p className="font-medium text-ink">No Report Selected</p>
-                  <p className="max-w-sm mx-auto text-muted">
-                    Select a report run from the history list or click &quot;Run Research Now&quot; to execute a search.
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-line bg-surface p-12 text-center text-xs text-muted space-y-3">
+                <Sparkles className="size-8 mx-auto text-brand/60" />
+                <p className="font-semibold text-ink text-sm">No Report Selected</p>
+                <p className="max-w-md mx-auto text-muted leading-relaxed">
+                  Configure your owner research objective brief above or select a past report from history to inspect source-backed findings and competitor comparisons.
+                </p>
+              </div>
+            )}
           </div>
         </>
       )}

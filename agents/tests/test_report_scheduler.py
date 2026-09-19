@@ -19,6 +19,8 @@ from agents.outbound.report_scheduler import (
 class TestReportSchedulerValidation(unittest.TestCase):
     def test_validate_schedule_input_valid(self):
         inp = {
+            "objective": " Identify high-end apartment partners ",
+            "research_type": "competitor_analysis",
             "term": " luxury apartments ",
             "area": " Austin, TX ",
             "limit": 15,
@@ -29,6 +31,8 @@ class TestReportSchedulerValidation(unittest.TestCase):
             "enabled": True,
         }
         val = validate_schedule_input(inp)
+        self.assertEqual(val["objective"], "Identify high-end apartment partners")
+        self.assertEqual(val["research_type"], "competitor_analysis")
         self.assertEqual(val["term"], "luxury apartments")
         self.assertEqual(val["area"], "Austin, TX")
         self.assertEqual(val["limit"], 15)
@@ -38,6 +42,23 @@ class TestReportSchedulerValidation(unittest.TestCase):
         self.assertEqual(val["weekday"], 2)
         self.assertTrue(val["enabled"])
 
+    def test_validate_schedule_input_legacy_fallback(self):
+        inp = {
+            "term": "pet grooming",
+            "area": "Houston, TX",
+        }
+        val = validate_schedule_input(inp)
+        self.assertEqual(val["objective"], "Discover market leads for pet grooming")
+        self.assertEqual(val["research_type"], "lead_discovery")
+        self.assertEqual(val["term"], "pet grooming")
+
+    def test_validate_schedule_input_rejects_overlong_objective(self):
+        with self.assertRaisesRegex(ValueError, "objective cannot exceed 2000 characters"):
+            validate_schedule_input({"objective": "a" * 2001, "area": "Houston, TX"})
+
+    def test_validate_schedule_input_rejects_invalid_research_type(self):
+        with self.assertRaisesRegex(ValueError, "research_type must be"):
+            validate_schedule_input({"objective": "valid objective", "research_type": "invalid_type", "area": "Houston, TX"})
     def test_validate_schedule_input_rejects_malformed_time(self):
         with self.assertRaisesRegex(ValueError, "time must be in HH:MM"):
             validate_schedule_input({"time": "09:30:junk"})
@@ -50,13 +71,14 @@ class TestReportSchedulerValidation(unittest.TestCase):
             validate_schedule_input({"enabled": "true"})
 
     def test_validate_schedule_input_rejects_empty_term_or_area(self):
-        with self.assertRaisesRegex(ValueError, "term cannot be empty"):
-            validate_schedule_input({"term": "   ", "area": "Houston, TX"})
+        with self.assertRaisesRegex(ValueError, "objective cannot be empty"):
+            validate_schedule_input({"objective": "   ", "area": "Houston, TX"})
+
+        with self.assertRaisesRegex(ValueError, "objective cannot be empty"):
+            validate_schedule_input({"objective": "", "term": "pet grooming", "area": "Houston, TX"})
 
         with self.assertRaisesRegex(ValueError, "area cannot be empty"):
-            validate_schedule_input({"term": "apartments", "area": "   "})
-
-
+            validate_schedule_input({"objective": "apartments", "area": "   "})
 class TestReportSchedulerTimezoneDST(unittest.TestCase):
     def test_compute_next_run_at_spring_forward(self):
         # US CDT Spring forward date: March 8, 2026.
@@ -177,6 +199,30 @@ class TestReportSchedulerConflictAndRecovery(unittest.TestCase):
             self.assertIsNone(res)
             mock_complete.assert_not_called()
 
+    def test_recover_pending_reservation_uses_target_snapshot_on_midflight_edit(self):
+        mock_db = MagicMock()
+        mock_db.table().select().eq().execute().data = []
+        sched = {
+            "pending_run_id": "t-lost",
+            "pending_run_target": {"term": "old term", "area": "Austin, TX", "limit": 5},
+            "term": "new term",
+            "objective": "Discover market leads for new term",
+        }
+        with patch("agents.outbound.report_scheduler.get_schedule", return_value=sched), \
+             patch("agents.outbound.report_scheduler.create_report_task") as mock_create:
+            mock_create.return_value = {"id": "t-lost"}
+            res = recover_pending_reservation(db=mock_db)
+            self.assertEqual(res, "t-lost")
+            mock_create.assert_called_once_with(
+                "old term",
+                "Austin, TX",
+                5,
+                created_by="scheduler",
+                task_id="t-lost",
+                objective="Discover market leads for old term",
+                research_type="lead_discovery",
+                db=mock_db,
+            )
 
 if __name__ == "__main__":
     unittest.main()

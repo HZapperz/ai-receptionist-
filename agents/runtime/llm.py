@@ -29,12 +29,15 @@ def _fake_response():
     return SimpleNamespace(choices=[SimpleNamespace(message=msg)])
 
 
-async def chat(messages: list[dict], tools: list[dict] | None = None):
+async def chat(messages: list[dict], tools: list[dict] | None = None, max_tokens: int | None = None):
     if settings.LLM_FAKE:
         return _fake_response()
     # Thinking tokens count against max_tokens, so leave room for them before the answer.
-    max_tokens = 800 if settings.LLM_DISABLE_THINKING else 3000
-    kwargs: dict = dict(model=settings.LLM_MODEL, messages=messages, temperature=0.2, max_tokens=max_tokens)
+    if max_tokens is not None:
+        effective_max_tokens = max_tokens
+    else:
+        effective_max_tokens = 800 if settings.LLM_DISABLE_THINKING else 3000
+    kwargs: dict = dict(model=settings.LLM_MODEL, messages=messages, temperature=0.2, max_tokens=effective_max_tokens)
     if tools:
         kwargs["tools"] = tools
     if settings.LLM_DISABLE_THINKING:
@@ -49,8 +52,9 @@ async def chat(messages: list[dict], tools: list[dict] | None = None):
                 return resp
             # Featherless sometimes answers 200 with {"error": {"code": "no_response"}} and no choices.
             err = (getattr(resp, "model_extra", None) or {}).get("error") or "no choices in response"
+            finish_reason = getattr(resp.choices[0], "finish_reason", None) if getattr(resp, "choices", None) else None
             if attempt == 3:
-                raise RuntimeError(f"model returned no choices: {err}")
+                raise RuntimeError(f"model returned no choices: {err} (finish_reason: {finish_reason})")
         except _RETRY:
             if attempt == 3:
                 raise

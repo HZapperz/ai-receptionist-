@@ -22,5 +22,11 @@ Prospecting for Royal Pawz. It finds partner leads (default: pet-friendly apartm
 - SEND_ALLOWLIST holds the team's and judges' addresses. Any other recipient is refused with {"error": "not_allowlisted"}.
 - An Apify run can take a minute or more. run_task() marks the task running, then done or failed with a result.
 
+
+## Owner Research & Lead Reports
+- **ScheduleInput**: `objective` (non-blank string <=2000 chars), `research_type` (`lead_discovery` | `competitor_analysis` | `custom`), `term` (optional/internal for backward compat), `area`, `limit`, `cadence`, `time`, `timezone`, `weekday`, `enabled`.
+- **ReportRun.target**: `{objective, research_type, term, area, limit}`.
+- **Apify Allowlist & Security**: Only allowlisted actors (`compass/crawler-google-places`, `apify/website-content-crawler`) can execute. All website URLs pass `is_safe_public_url` SSRF checks before crawling.
+- **Research Agent Loop**: `generate_report(task)` first runs `research_planner` agent to determine `search_term`, rationale, evidence needed, and website crawling requirements. Scraping uses `search_term`. If website evidence is required or research_type is competitor_analysis, public business websites are crawled for supporting evidence. `report_synthesizer` synthesizes grounded findings, competitor comparisons (with explicit `unknown` for missing market evidence), and cited evidence sources.
 ## Done when
 POST /outbound/find lands 20 leads, every new lead gets a draft, and Send delivers one email to an allowlisted inbox.

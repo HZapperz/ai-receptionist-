@@ -2,8 +2,12 @@
 
 export type Cadence = "daily" | "weekly";
 
+export type ResearchType = "lead_discovery" | "competitor_analysis" | "custom";
+
 export type ScheduleInput = {
-  term: string;
+  objective: string;
+  research_type: ResearchType;
+  term?: string; // Kept optional/internal for backward compatibility
   area: string;
   limit: number;
   cadence: Cadence;
@@ -45,21 +49,54 @@ export type ReportCategory = {
 };
 
 export type ReportSources = {
-  actor_id: string;
-  run_id: string;
-  dataset_id: string;
-  fetched_at: string;
+  actor_id?: string;
+  run_id?: string;
+  dataset_id?: string;
+  fetched_at?: string;
+};
+
+export type ResearchPlan = {
+  objective: string;
+  research_type: ResearchType;
+  search_term: string;
+  rationale: string;
+  evidence_needed: string[];
+};
+
+export type FindingItem = {
+  heading: string;
+  detail: string;
+  source_urls: string[];
+};
+
+export type ComparisonItem = {
+  dimension: string;
+  our_business: string;
+  market_evidence: string;
+  implication: string;
+  source_urls: string[];
+};
+
+export type EvidenceSource = {
+  url: string;
+  title: string;
+  kind: string;
 };
 
 export type LeadReport = {
   title: string;
   summary: string;
-  metrics: ReportMetrics;
-  categories: ReportCategory[];
-  leads: ReportLead[];
-  recommendations: string[];
-  limitations: string[];
-  sources: ReportSources;
+  metrics?: ReportMetrics;
+  categories?: ReportCategory[];
+  leads?: ReportLead[];
+  recommendations?: string[];
+  limitations?: string[];
+  sources?: ReportSources;
+  // Owner research plan & findings
+  research_plan?: ResearchPlan;
+  findings?: FindingItem[];
+  comparisons?: ComparisonItem[];
+  evidence_sources?: EvidenceSource[];
 };
 
 export type ReportRunStatus = "pending" | "running" | "done" | "failed";
@@ -69,6 +106,8 @@ export type ReportRun = {
   status: ReportRunStatus;
   created_at: string;
   target: {
+    objective?: string;
+    research_type?: ResearchType;
     term: string;
     area: string;
     limit: number;
@@ -81,6 +120,7 @@ export type ReportsApiResponse = {
   schedule: Schedule | null;
   runs: ReportRun[];
   defaults: {
+    objective?: string;
     term: string;
     area: string;
   };

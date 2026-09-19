@@ -1,10 +1,14 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import hashlib
+import ipaddress
 import logging
 import math
 import os
+import socket
 from typing import Any
+from urllib.parse import urlparse
 
 from apify_client import ApifyClientAsync
 
@@ -13,6 +17,77 @@ from agents.settings import settings
 logger = logging.getLogger(__name__)
 
 DEFAULT_ACTOR_ID = "compass/crawler-google-places"
+WEBSITE_CRAWLER_ACTOR_ID = "apify/website-content-crawler"
+
+ALLOWED_ACTORS: set[str] = {
+    "compass/crawler-google-places",
+    "apify/website-content-crawler",
+}
+
+BLOCKED_HOSTNAMES = {"localhost", "metadata.google.internal", "instance-data"}
+
+
+def is_safe_public_url(url: str) -> bool:
+    """Validate that a URL is a public, routable http/https URL and does not target private or local networks (SSRF defense)."""
+    if not url or not isinstance(url, str):
+        return False
+    trimmed = url.strip()
+    if not trimmed:
+        return False
+    try:
+        parsed = urlparse(trimmed)
+    except Exception:
+        return False
+
+    if parsed.scheme not in ("http", "https"):
+        return False
+
+    hostname = parsed.hostname
+    if not hostname:
+        return False
+
+    hostname = hostname.lower().strip(".")
+    if not hostname:
+        return False
+
+    if hostname in BLOCKED_HOSTNAMES or hostname.endswith((".local", ".localhost", ".internal", ".arpa", ".lan")):
+        return False
+
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+            or ip.is_unspecified
+        ):
+            return False
+        return True
+    except ValueError:
+        pass
+
+    try:
+        addr_info = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            ip = ipaddress.ip_address(ip_str)
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
+            ):
+                return False
+        return True
+    except (socket.gaierror, socket.error, ValueError):
+        return False
+async def is_safe_public_url_async(url: str) -> bool:
+    """Validate URL in thread pool so synchronous DNS lookups do not block the asyncio event loop."""
+    return await asyncio.to_thread(is_safe_public_url, url)
 
 
 def normalize_place(item: dict[str, Any]) -> dict[str, Any]:
@@ -112,6 +187,8 @@ async def scrape_places(term: str, area: str, limit: int = 20) -> dict[str, Any]
     token = str(token).strip()
     bounded_limit = min(max(1, int(limit)), 50)
     actor_id = getattr(settings, "APIFY_ACTOR_ID", "") or DEFAULT_ACTOR_ID
+    if actor_id not in ALLOWED_ACTORS:
+        raise ValueError(f"Apify actor '{actor_id}' is not in allowlist {sorted(ALLOWED_ACTORS)}")
 
     clean_term = term.strip() if term else ""
     clean_area = area.strip() if area else ""
@@ -194,7 +271,136 @@ async def scrape_places(term: str, area: str, limit: int = 20) -> dict[str, Any]
         "dataset_id": dataset_id,
         "fetched_at": fetched_at,
     }
+async def crawl_business_websites(urls: list[str], max_pages_per_site: int = 2) -> dict[str, Any]:
+    """Crawl supporting public business website content for extra evidence using allowlisted Apify actor.
 
+    Returns dict:
+    {
+        "pages": dict[url, cleaned_text],
+        "sources": {"actor_id", "run_id", "dataset_id", "fetched_at"},
+        "error": str | None,
+        "limitations": list[str],
+    }
+    """
+    token = os.environ.get("APIFY_TOKEN") or getattr(settings, "APIFY_TOKEN", "")
+    if not token or not str(token).strip():
+        logger.warning("APIFY_TOKEN missing; skipping supporting website crawl")
+        return {"pages": {}, "sources": {}, "error": "APIFY_TOKEN missing", "limitations": ["Website content crawl skipped because APIFY_TOKEN is missing"]}
+
+    safe_urls = []
+    for u in urls:
+        if await is_safe_public_url_async(u):
+            safe_urls.append(u)
+
+    if not safe_urls:
+        return {"pages": {}, "sources": {}, "error": None, "limitations": []}
+
+    safe_urls = safe_urls[:3]
+    actor_id = WEBSITE_CRAWLER_ACTOR_ID
+    if actor_id not in ALLOWED_ACTORS:
+        raise ValueError(f"Apify actor '{actor_id}' is not in allowlist {sorted(ALLOWED_ACTORS)}")
+
+    total_max_pages = max(1, min(len(safe_urls) * max_pages_per_site, 6))
+    include_globs = []
+    for u in safe_urls:
+        parsed_host = (urlparse(u).hostname or "").lower()
+        if parsed_host:
+            dom = parsed_host.removeprefix("www.")
+            if dom:
+                include_globs.extend([
+                    {"glob": f"http://{dom}/**"},
+                    {"glob": f"https://{dom}/**"},
+                    {"glob": f"http://www.{dom}/**"},
+                    {"glob": f"https://www.{dom}/**"},
+                ])
+
+    actor_input: dict[str, Any] = {
+        "startUrls": [{"url": u} for u in safe_urls],
+        "maxCrawlPages": total_max_pages,
+        "maxCrawlDepth": 1,
+        "crawlerType": "cheerio",
+        "saveMarkdown": True,
+        "saveFiles": False,
+        "includeGlobs": include_globs,
+        "excludeGlobs": [
+            {"glob": "https://{facebook.com,twitter.com,x.com,instagram.com,linkedin.com,youtube.com,tiktok.com}/**"}
+        ],
+    }
+
+    client = ApifyClientAsync(token=token.strip())
+    run = None
+    try:
+        run = await client.actor(actor_id).call(
+            run_input=actor_input,
+            max_items=total_max_pages,
+            max_total_charge_usd=Decimal("0.50"),
+            run_timeout=timedelta(seconds=60),
+            wait_duration=timedelta(seconds=60),
+        )
+    except Exception as exc:
+        safe_msg = str(exc).replace(token, "[REDACTED]")
+        logger.warning("Supporting website crawl failed for %s: %s", actor_id, safe_msg)
+        return {
+            "pages": {},
+            "sources": {"actor_id": actor_id, "run_id": "", "dataset_id": "", "fetched_at": ""},
+            "error": safe_msg,
+            "limitations": [f"Supporting website crawl failed for {actor_id}: {safe_msg}"],
+        }
+
+    if run is None or run.status != "SUCCEEDED":
+        status_str = getattr(run, "status", "TIMED_OUT")
+        if run and hasattr(run, "id"):
+            try:
+                await client.run(run.id).abort()
+            except Exception:
+                pass
+        logger.warning("Supporting website crawl %s finished with non-success status %s", actor_id, status_str)
+        return {
+            "pages": {},
+            "sources": {
+                "actor_id": actor_id,
+                "run_id": getattr(run, "id", ""),
+                "dataset_id": getattr(run, "default_dataset_id", ""),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "error": f"Status {status_str}",
+            "limitations": [f"Supporting website crawl finished with non-success status '{status_str}'"],
+        }
+
+    results: dict[str, str] = {}
+    dataset_id = run.default_dataset_id
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    try:
+        dataset_client = client.dataset(dataset_id)
+        page = await dataset_client.list_items(limit=total_max_pages)
+        items = page.items if hasattr(page, "items") else list(page)
+        for item in items:
+            crawl_obj = item.get("crawl") if isinstance(item.get("crawl"), dict) else {}
+            item_url = item.get("url") or item.get("loadedUrl") or crawl_obj.get("loadedUrl") or ""
+            text_content = item.get("markdown") or item.get("text") or ""
+            if item_url and text_content and is_safe_public_url(item_url):
+                clean_text = " ".join(text_content.split())[:1500]
+                results[item_url] = clean_text
+    except Exception as exc:
+        safe_msg = str(exc).replace(token, "[REDACTED]")
+        logger.warning("Failed extracting dataset items for website crawl: %s", safe_msg)
+        return {
+            "pages": results,
+            "sources": {"actor_id": actor_id, "run_id": run.id, "dataset_id": dataset_id, "fetched_at": fetched_at},
+            "error": safe_msg,
+            "limitations": [f"Failed reading website crawler dataset: {safe_msg}"],
+        }
+
+    limitations = []
+    if not results:
+        limitations.append("Website content crawler completed but found no extractable public content from candidate sites.")
+
+    return {
+        "pages": results,
+        "sources": {"actor_id": actor_id, "run_id": run.id, "dataset_id": dataset_id, "fetched_at": fetched_at},
+        "error": None,
+        "limitations": limitations,
+    }
 
 async def find_leads(term: str, area: str, limit: int) -> list[dict[str, Any]]:
     """Exact signature for find_leads task.

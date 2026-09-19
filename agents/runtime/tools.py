@@ -29,7 +29,7 @@ class AgentSpec:
     name: str
     system_prompt: Callable[[Ctx], str]
     tools: list[Tool]
-
+    max_tokens: int | None = None
 
 async def run_tool(spec: AgentSpec, call, ctx: Ctx) -> dict:
     tool = next((t for t in spec.tools if t.name == call.function.name), None)

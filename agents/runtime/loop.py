@@ -46,13 +46,20 @@ async def run_agent(spec: AgentSpec, messages: list[dict], ctx: Ctx, max_steps: 
     msgs: list[dict] = [{"role": "system", "content": spec.system_prompt(ctx)}, *messages]
     schemas = [t.schema() for t in spec.tools]
     for _ in range(max_steps):
-        resp = await llm.chat(msgs, tools=schemas)
+        kwargs = {}
+        if spec.max_tokens is not None:
+            kwargs["max_tokens"] = spec.max_tokens
+        resp = await llm.chat(msgs, tools=schemas, **kwargs)
         msg = resp.choices[0].message
         text = llm.strip_think(msg.content)
         calls = msg.tool_calls or parse_tool_calls(text)
         if not calls:
             if _unsendable(text):
-                await log_event(ctx, kind="error", name="bad_reply", result={"text": (msg.content or "")[:500]})
+                finish_reason = getattr(resp.choices[0], "finish_reason", None) if getattr(resp, "choices", None) else None
+                await log_event(ctx, kind="error", name="bad_reply", result={
+                    "text": (msg.content or "")[:500],
+                    "finish_reason": finish_reason,
+                })
                 return GIVE_UP
             await log_event(ctx, kind="message", name="reply", result={"text": text})
             return text
