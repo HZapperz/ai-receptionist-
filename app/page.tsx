@@ -1,20 +1,28 @@
-// STUB: manager. Plain layout that works; restyle it for the projector.
-import { BookingsPanel } from "@/components/BookingsPanel";
-import { InboxPanel } from "@/components/InboxPanel";
-import { LeadsPanel } from "@/components/LeadsPanel";
-import { ManagerChat } from "@/components/ManagerChat";
-import { TracePanel } from "@/components/TracePanel";
+// Public landing page. The dashboard lives at /dashboard, behind the login.
+import { Agents } from "@/components/marketing/Agents";
+import { CtaBand } from "@/components/marketing/CtaBand";
+import { Footer } from "@/components/marketing/Footer";
+import { Guardrails } from "@/components/marketing/Guardrails";
+import { Hero } from "@/components/marketing/Hero";
+import { HowItWorks } from "@/components/marketing/HowItWorks";
+import { Nav } from "@/components/marketing/Nav";
+import { Pricing } from "@/components/marketing/Pricing";
+import { SwapRow } from "@/components/marketing/SwapRow";
 
-export default function Dashboard() {
+export default function Landing() {
   return (
-    <main className="grid h-screen grid-cols-2 grid-rows-2 gap-3 bg-zinc-50 p-3 dark:bg-black">
-      <ManagerChat />
-      <LeadsPanel />
-      <div className="grid min-h-0 grid-cols-2 gap-3">
-        <InboxPanel />
-        <TracePanel />
-      </div>
-      <BookingsPanel />
-    </main>
+    <>
+      <Nav />
+      <main className="flex-1">
+        <Hero />
+        <Agents />
+        <HowItWorks />
+        <SwapRow />
+        <Guardrails />
+        <Pricing />
+        <CtaBand />
+      </main>
+      <Footer />
+    </>
   );
 }
