@@ -300,24 +300,46 @@ async def list_bookings(ctx: Ctx, args: ListBookingsArgs) -> dict:
 
 
 async def get_conversation(ctx: Ctx, args: GetConversationArgs) -> dict:
+    """Find a thread by phone, customer name or pet name.
+
+    The owner types what they see -- "346-804-8886", or the pet's name -- while phones are
+    stored E.164 and a texting customer often has no name on file, so an exact match on
+    either field finds nothing. Fall through the plausible readings before giving up.
+    """
     term = args.phone_or_name.strip()
+    tail = "".join(c for c in term if c.isdigit())[-10:]
+
     by_phone = ctx.db.table("customers").select("*").eq("phone", term).limit(1).execute().data
     customer = by_phone[0] if by_phone else None
+    if customer is None and len(tail) == 10:
+        by_tail = ctx.db.table("customers").select("*").like("phone", f"%{tail}").limit(1).execute().data
+        customer = by_tail[0] if by_tail else None
     if customer is None:
         matches = ctx.db.table("customers").select("*").ilike("name", f"%{term}%").limit(1).execute().data
         customer = matches[0] if matches else None
-    if customer is None:
+
+    phone = customer.get("phone") if customer else None
+    if phone is None and len(tail) == 10:
+        # Someone who texted but was never named still has a thread worth reading.
+        row = ctx.db.table("messages").select("phone").like("phone", f"%{tail}").limit(1).execute().data
+        phone = row[0]["phone"] if row else None
+    if phone is None and term:
+        # Owners refer to a thread by the pet, which lives on the booking, not the customer.
+        pet = ctx.db.table("bookings").select("phone,pet_name").ilike("pet_name", f"%{term}%").limit(1).execute().data
+        phone = pet[0]["phone"] if pet else None
+    if phone is None:
         return {"phone": None, "name": None, "messages": []}
+
     rows = (
         ctx.db.table("messages")
         .select("direction,body,created_at")
-        .eq("phone", customer["phone"])
+        .eq("phone", phone)
         .order("created_at", desc=True)
         .limit(20)
         .execute()
         .data
     )
-    return {"phone": customer.get("phone"), "name": customer.get("name"), "messages": list(reversed(rows or []))}
+    return {"phone": phone, "name": (customer or {}).get("name"), "messages": list(reversed(rows or []))}
 
 
 async def list_tasks(ctx: Ctx, args: ListTasksArgs) -> dict:
