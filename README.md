@@ -28,10 +28,10 @@ Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen 
    - `python -m agents.tests.test_gate` (runs in-process)
 
 ### Dashboard login
-The dashboard sits behind Supabase email/password login; `/` is public. Set up once per Supabase project, in the Supabase dashboard:
+The dashboard uses Supabase email/password login; `/` is public. `/dashboard` and `/onboarding` stay open until the dashboard server has `REQUIRE_LOGIN=true`. Set up once per Supabase project:
 1. **SQL editor:** run `supabase/migrations/0003_auth_read.sql`. A signed-in browser reads as `authenticated`, and without this every panel is empty.
-2. **Auth > Providers > Email:** turn off "Confirm email", so signup lands straight in the app.
-3. **Auth > URL Configuration:** set the Site URL to the Vercel URL, and add `http://localhost:3000/**` and the Vercel URL to the redirect URLs.
+2. **Dashboard server env:** set `SUPABASE_SERVICE_ROLE_KEY` (in `.env.local` locally, and on Vercel). Signup then creates the account already confirmed and signs straight in, with no email, whether "Confirm email" is on or off. Without it, signup falls back to Supabase's confirmation email, which only reaches the project's team members. An empty `SUPABASE_SERVICE_ROLE_KEY=` line in `.env.local` hides the value in `.env`.
+3. **Auth > URL Configuration:** set the Site URL to the Vercel URL, and add `http://localhost:3000/**` and `https://<vercel-url>/**` to the redirect URLs. Only the fallback's confirmation link (to `/auth/confirm`) needs them.
 4. **Auth > Users > Add user:** create the demo login with auto-confirm on. Share it privately, never in git.
 
 Teammates now sign in (or sign up) to see the dashboard. The agents service has no login; its `/agents/*` routes stay open.
@@ -56,7 +56,7 @@ Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your 
 **Git:** everyone works on `main`. Run `git pull --rebase` before you start and before each push, and run the smoke test before you push.
 
 ## Deploy
-- **Dashboard:** Vercel, with `AGENTS_URL` set to the agents host and the two `NEXT_PUBLIC_SUPABASE_*` vars. Add the Vercel URL to Supabase's Auth redirect URLs (see Dashboard login).
+- **Dashboard:** Vercel, with `AGENTS_URL` set to the agents host, the two `NEXT_PUBLIC_SUPABASE_*` vars, `SUPABASE_SERVICE_ROLE_KEY` (for signup; server only, never `NEXT_PUBLIC_`) and, to require the login, `REQUIRE_LOGIN=true`. Add the Vercel URL to Supabase's Auth redirect URLs (see Dashboard login).
 - **Agents service:** an always-on host (Railway or Render), never serverless. From the repo root, the start command is `uvicorn agents.main:app --host 0.0.0.0 --port $PORT`.
   - Set every var from `.env.example`.
   - `PUBLIC_AGENTS_URL` must be the host's public URL, or Twilio signatures will not validate.

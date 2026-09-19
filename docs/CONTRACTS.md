@@ -150,7 +150,7 @@ The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrit
 | Var | Used by |
 | --- | --- |
 | LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_MAX_CONCURRENCY, LLM_DISABLE_THINKING, LLM_FAKE | agents/runtime/llm.py |
-| SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY | agents/db.py |
+| SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY | agents/db.py. SUPABASE_SERVICE_ROLE_KEY also lib/supabase-admin.ts: signUp creates confirmed accounts (dashboard server only, never NEXT_PUBLIC) |
 | NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY | lib/supabase.ts, lib/supabase-server.ts, proxy.ts |
 | AGENTS_URL | next.config rewrite |
 | REQUIRE_LOGIN | lib/login.ts (proxy.ts, app/dashboard/layout.tsx): `true` puts the dashboard behind the login; anything else leaves it open |

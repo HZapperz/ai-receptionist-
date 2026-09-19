@@ -7,11 +7,13 @@ The inbound lane owns app/, components/, lib/ and proxy.ts. The one exception is
 ## Routes
 - `/`: landing page, public. Built from components/marketing/.
 - `/login`, `/signup`: Supabase email/password forms.
+- `/auth/confirm`: route handler for Supabase email links (`?code=` or `?token_hash=&type=`); signs the visitor in and sends them to /onboarding.
 - `/onboarding`: a dummy demo wizard, prefilled from business_config. It never writes.
 - `/dashboard/*`: Overview, Inbox, Leads, Bookings, Activity, Manager (mounts ManagerChat) and Settings, behind the login.
 
 ## Auth
 - @supabase/ssr. lib/supabase.ts is the browser client (export `supabase`), lib/supabase-server.ts the server client (`await createClient()`), lib/auth-actions.ts the server actions (signIn, signUp, signOut).
+- signUp creates the account already confirmed through lib/supabase-admin.ts (SUPABASE_SERVICE_ROLE_KEY, server-only), then signs in, so "Confirm email" never blocks a judge. Without the key it falls back to the public signUp, whose email link lands on app/auth/confirm/route.ts. Never import supabase-admin from a client component.
 - proxy.ts (Next 16's name for middleware) refreshes the session and guards /dashboard and /onboarding. Its matcher must exclude /agents, or the rewrite to the agents service breaks.
 - A signed-in browser reads as `authenticated`. Its select policies come from supabase/migrations/0003_auth_read.sql; until that runs, a logged-in dashboard shows empty panels.
 
