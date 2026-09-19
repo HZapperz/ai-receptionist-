@@ -144,6 +144,10 @@ An error is always `{"error": str}`. Tools never raise to the model.
 | POST /outbound/find | dashboard | Body `{"term", "area", "limit"}`. Creates and starts a find_leads task |
 | POST /outbound/draft | dashboard | Body `{"lead_ids"}`. Creates and starts a draft_emails task |
 | POST /outbound/send | dashboard | Body `{"lead_id"}`. Checks SEND_ALLOWLIST, sends the saved draft, sets status `sent` |
+| GET /outbound/reports | dashboard | Returns `{schedule, runs, defaults, worker}` state snapshot |
+| PUT /outbound/reports/schedule | dashboard | Updates schedule config `{term, area, limit, cadence, time, timezone, weekday, enabled}`, calculates next run timestamp |
+| POST /outbound/reports/run | dashboard | Triggers manual report run immediately (409 if run active) |
+| GET /outbound/reports/{id} | dashboard | Returns ReportRun details or 404 |
 | POST /tasks/run | dashboard | Runs any pending tasks. The manual kick |
 
 The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrites to `AGENTS_URL`. `proxy.ts` (the dashboard login guard) excludes `/agents`, so these routes are not behind the login.

@@ -3,7 +3,7 @@
 Three agents share one Supabase database:
 
 - **Inbound** answers texts on the business number, quotes, offers slots and books.
-- **Outbound** finds partner leads with Apify and drafts one email per lead. A person clicks Send.
+- **Outbound** finds partner leads with Apify, drafts outreach emails, and manages recurring lead research reports and schedules.
 - **Manager** is a persistent OMP chief of staff and chat box on the dashboard with durable queues and human-in-the-loop approvals.
 
 The dashboard has a public landing page, email/password login, a demo onboarding and the live dashboard pages.

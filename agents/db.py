@@ -137,6 +137,10 @@ class SQLiteQueryBuilder:
         self._filters.append((column, ">=", value))
         return self
 
+    def in_(self, column: str, values: list[Any]):
+        self._filters.append((column, "IN", tuple(values)))
+        return self
+
     def order(self, column: str, desc: bool = False):
         self._order_by = (column, desc)
         return self
@@ -176,9 +180,15 @@ class SQLiteQueryBuilder:
             elif self._action == "update":
                 where_clauses, params = [], {}
                 for i, (col, op, val) in enumerate(self._filters):
-                    key = f"w_{i}_{col}"
-                    where_clauses.append(f"{col} {op} :{key}")
-                    params[key] = val
+                    if op == "IN":
+                        in_keys = [f"w_{i}_{j}" for j in range(len(val))]
+                        where_clauses.append(f"{col} IN ({', '.join(':' + k for k in in_keys)})")
+                        for k, v in zip(in_keys, val):
+                            params[k] = str(v) if isinstance(v, uuid.UUID) else v
+                    else:
+                        key = f"w_{i}_{col}"
+                        where_clauses.append(f"{col} {op} :{key}")
+                        params[key] = str(val) if isinstance(val, uuid.UUID) else val
                 set_clauses = []
                 for k, v in dict(self._values).items():
                     if v == "now()":
@@ -201,9 +211,15 @@ class SQLiteQueryBuilder:
             else:
                 where_clauses, params = [], {}
                 for i, (col, op, val) in enumerate(self._filters):
-                    key = f"w_{i}_{col}"
-                    where_clauses.append(f"{col} {op} :{key}")
-                    params[key] = val
+                    if op == "IN":
+                        in_keys = [f"w_{i}_{j}" for j in range(len(val))]
+                        where_clauses.append(f"{col} IN ({', '.join(':' + k for k in in_keys)})")
+                        for k, v in zip(in_keys, val):
+                            params[k] = str(v) if isinstance(v, uuid.UUID) else v
+                    else:
+                        key = f"w_{i}_{col}"
+                        where_clauses.append(f"{col} {op} :{key}")
+                        params[key] = str(val) if isinstance(val, uuid.UUID) else val
                 where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
                 order_str = f"ORDER BY {self._order_by[0]} {'DESC' if self._order_by[1] else 'ASC'}" if self._order_by else ""
                 limit_str = f"LIMIT {self._limit}" if self._limit else ""
