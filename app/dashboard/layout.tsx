@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { Button, StatusDot } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { signOut } from "@/lib/auth-actions";
 import { BRAND } from "@/lib/brand";
 import { loginRequired } from "@/lib/login";
@@ -43,10 +43,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               <p className="truncate text-sm font-semibold text-ink">{workspace}</p>
               <p className="text-xs text-muted">Workspace</p>
             </div>
-            <span className="ml-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20 ring-inset">
-              <StatusDot tone="live" pulse />
-              Live
-            </span>
           </div>
           {user ? (
             <div className="flex items-center gap-3">

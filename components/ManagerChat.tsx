@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import { BRAND } from "@/lib/brand";
 import {
   createClientId,
@@ -17,6 +18,49 @@ type OutgoingMessage = {
   enqueued: boolean;
   error: string | null;
   eventId?: string;
+};
+
+const ALLOWED_MARKDOWN_ELEMENTS = [
+  "p",
+  "br",
+  "strong",
+  "em",
+  "code",
+  "ul",
+  "ol",
+  "li",
+  "a",
+] as const;
+
+const MARKDOWN_COMPONENTS: Components = {
+  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+  br: () => <br />,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-zinc-950 dark:text-zinc-50">{children}</strong>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
+  code: ({ children }) => (
+    <code className="rounded bg-zinc-200/80 px-1 py-0.5 font-mono text-[13px] text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200">
+      {children}
+    </code>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-2 list-disc list-outside pl-4 space-y-1 last:mb-0">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-2 list-decimal list-outside pl-4 space-y-1 last:mb-0">{children}</ol>
+  ),
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 break-words"
+    >
+      {children}
+    </a>
+  ),
 };
 
 function formatPayloadValue(val: unknown): string {
@@ -368,13 +412,23 @@ export function ManagerChat() {
                   <span>{new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
                 </div>
                 <div
-                  className={`rounded-lg px-3.5 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
+                  className={`rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "bg-black text-white dark:bg-white dark:text-black"
+                      ? "bg-black text-white dark:bg-white dark:text-black whitespace-pre-wrap"
                       : "bg-zinc-100 text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800"
                   }`}
                 >
-                  {m.content}
+                  {m.role === "user" ? (
+                    m.content
+                  ) : (
+                    <ReactMarkdown
+                      allowedElements={[...ALLOWED_MARKDOWN_ELEMENTS]}
+                      unwrapDisallowed
+                      components={MARKDOWN_COMPONENTS}
+                    >
+                      {m.content}
+                    </ReactMarkdown>
+                  )}
                 </div>
               </div>
             ))}
