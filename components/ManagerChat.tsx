@@ -7,7 +7,6 @@ import {
   decideManagerApproval,
   enqueueManagerMessage,
   getManagerState,
-  type ManagerEvent,
   type ManagerMessage,
   type ManagerState,
 } from "@/lib/manager";
@@ -18,13 +17,6 @@ type OutgoingMessage = {
   enqueued: boolean;
   error: string | null;
   eventId?: string;
-};
-
-const EVENT_SOURCE_LABELS: Record<ManagerEvent["source"], string> = {
-  chat: "Manager chat",
-  twilio: "Customer text",
-  approval: "Approval",
-  worker: "Background work",
 };
 
 function formatPayloadValue(val: unknown): string {
@@ -74,18 +66,32 @@ export function ManagerChat() {
       setState(data);
       setFetchError(null);
 
-      // Reconcile optimistic outgoing messages via event id / dedupe_key, NOT message text content
+      // Reconcile optimistic outgoing messages by persisted event linkage, not message text
       setOutgoing((prev) =>
         prev.filter((item) => {
-          if (item.eventId) {
-            const ev = data.events.find((e) => e.id === item.eventId);
-            if (ev && (ev.status === "completed" || ev.status === "failed" || ev.status === "interrupted")) {
-              return false;
-            }
-          }
+          const directEvent = item.eventId
+            ? data.events.find((e) => e.id === item.eventId)
+            : undefined;
           const matchingEv = data.events.find(
             (e) => e.dedupe_key === item.clientId || e.dedupe_key === `chat:${item.clientId}`
           );
+          const persistedMessage = data.messages.some(
+            (message) =>
+              message.role === "user" &&
+              (message.event_id === item.eventId || message.event_id === matchingEv?.id)
+          );
+
+          if (persistedMessage) {
+            return false;
+          }
+          if (
+            directEvent &&
+            (directEvent.status === "completed" ||
+              directEvent.status === "failed" ||
+              directEvent.status === "interrupted")
+          ) {
+            return false;
+          }
           if (
             matchingEv &&
             (matchingEv.status === "completed" ||
@@ -178,7 +184,6 @@ export function ManagerChat() {
   const runtime = state?.runtime;
   const isUnavailable = runtime?.status === "unavailable";
   const activeEvents = state?.events.filter((e) => e.status === "queued" || e.status === "running") ?? [];
-  const recenteventStatuses = state?.events.slice(0, 5) ?? [];
   const pendingApprovals = state?.approvals.filter((a) => a.status === "pending") ?? [];
   const activeTasks = state?.tasks.filter((t) => t.status !== "done") ?? [];
 
@@ -226,39 +231,6 @@ export function ManagerChat() {
           <p className="font-semibold">Action Warning</p>
           <p>{actionError}</p>
         </div>
-      )}
-
-      {/* Recent activity status bar */}
-      {recenteventStatuses.length > 0 && (
-        <section className="border-b border-zinc-200 bg-zinc-50/60 px-4 py-2 dark:border-zinc-800 dark:bg-zinc-900/40 text-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">
-              Recent activity
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {recenteventStatuses.map((ev) => (
-              <span
-                key={ev.id}
-                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-[11px] ${
-                  ev.status === "running"
-                    ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200"
-                    : ev.status === "queued"
-                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
-                    : ev.status === "failed"
-                    ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
-                    : ev.status === "interrupted"
-                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200"
-                    : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                }`}
-              >
-                <span>{EVENT_SOURCE_LABELS[ev.source] ?? "Activity"}:</span>
-                <span className="font-bold">{ev.status}</span>
-                {ev.error && <span className="text-[10px] text-red-600">({ev.error})</span>}
-              </span>
-            ))}
-          </div>
-        </section>
       )}
 
       {/* Active Tasks Bar */}
