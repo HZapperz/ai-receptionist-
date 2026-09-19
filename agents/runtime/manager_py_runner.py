@@ -38,7 +38,7 @@ STUCK_REPLY = (
 # for the owner to click (propose_send_sms, propose_book).
 READ_TOOLS = {
     "get_info", "quote", "find_slots", "lookup_lead", "get_summary", "list_leads",
-    "list_bookings", "get_conversation", "list_tasks", "recall",
+    "list_bookings", "get_conversation", "search_messages", "list_tasks", "recall",
 }
 
 MAX_HISTORY = 30   # manager_messages grows without bound; only the tail goes to the model
@@ -52,10 +52,10 @@ _NO_OMP = (
     "Runtime note, which overrides any capability claim above: you are running on the "
     "dashboard's Python runtime. You have no workspace files, no code execution, no "
     "browser and no delegation to another agent. Your tools are the ones listed for this "
-    "turn, and nothing else.\n"
-    # The chat bubble renders plain text, so markdown shows up as literal ** and #.
-    "Write your reply as plain text. No markdown: no **bold**, no headings, no bullet "
-    "syntax. Use short lines and plain dashes if you need a list."
+    "turn, and nothing else."
+    # The chat used to render markdown literally, so this note asked for plain text. It
+    # renders a safe subset now (react-markdown), and prompt.py rule 11 lists exactly what
+    # is allowed, so saying anything about formatting here would only contradict it.
 )
 _READ_ONLY = (
     " This runtime is read-only: you cannot create or update tasks, propose an SMS, or "

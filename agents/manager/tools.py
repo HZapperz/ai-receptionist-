@@ -103,6 +103,11 @@ class GetConversationArgs(BaseModel):
     phone_or_name: str = Field(min_length=1, max_length=100)
 
 
+class SearchMessagesArgs(BaseModel):
+    query: str = Field(min_length=2, max_length=100)
+    limit: int = Field(default=15, ge=1, le=40)
+
+
 class ListTasksArgs(BaseModel):
     status: Literal["working", "waiting", "needs_approval", "done"] | None = None
     limit: int = Field(default=20, ge=1, le=100)
@@ -342,6 +347,35 @@ async def get_conversation(ctx: Ctx, args: GetConversationArgs) -> dict:
     return {"phone": phone, "name": (customer or {}).get("name"), "messages": list(reversed(rows or []))}
 
 
+async def search_messages(ctx: Ctx, args: SearchMessagesArgs) -> dict:
+    """Find threads by what was actually said in them.
+
+    The owner asks about a pet, a service or a street by name, and usually does not know
+    the phone number. Matching happens in the database against a parameterized term, so
+    this stays a narrow tool: it answers "which threads mention this", and the model then
+    calls get_conversation for the one it wants.
+    """
+    rows = (
+        ctx.db.table("messages")
+        .select("phone,direction,body,created_at")
+        .ilike("body", f"%{args.query}%")
+        .order("created_at", desc=True)
+        .limit(args.limit)
+        .execute()
+        .data
+    ) or []
+    threads: dict[str, dict] = {}
+    for r in rows:
+        thread = threads.setdefault(
+            r["phone"],
+            {"phone": r["phone"], "mentions": 0, "latest": r["created_at"], "example": ""},
+        )
+        thread["mentions"] += 1
+        if not thread["example"]:
+            thread["example"] = (r.get("body") or "")[:200]
+    return {"query": args.query, "threads": list(threads.values())}
+
+
 async def list_tasks(ctx: Ctx, args: ListTasksArgs) -> dict:
     query = (
         ctx.db.table("manager_tasks")
@@ -570,7 +604,8 @@ MANAGER = AgentSpec(
         Tool("get_summary", "Summarize recent business activity.", GetSummaryArgs, get_summary),
         Tool("list_leads", "Read partner leads, optionally filtered by status.", ListLeadsArgs, list_leads),
         Tool("list_bookings", "Read bookings, optionally filtered by status.", ListBookingsArgs, list_bookings),
-        Tool("get_conversation", "Read the latest customer conversation by phone or name.", GetConversationArgs, get_conversation),
+        Tool("get_conversation", "Read the latest customer conversation by phone, customer name or pet name.", GetConversationArgs, get_conversation),
+        Tool("search_messages", "Search what customers actually texted, to find which thread mentions a pet, service or place. Returns matching threads; read one with get_conversation.", SearchMessagesArgs, search_messages),
         Tool("list_tasks", "Read manager tasks.", ListTasksArgs, list_tasks),
         Tool("create_task", "Create a visible manager task.", CreateTaskArgs, create_task),
         Tool("update_task", "Update a manager task status or detail.", UpdateTaskArgs, update_task),
