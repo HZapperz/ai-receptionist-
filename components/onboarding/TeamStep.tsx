@@ -2,6 +2,7 @@
 
 import { ChartBar, MessageSquareText, Telescope } from "lucide-react";
 import { Badge, cn } from "@/components/ui";
+import { VoiceUpload } from "./VoiceUpload";
 
 export const AGENTS = [
   {
@@ -83,6 +84,9 @@ export function TeamStep({ on, toggle, tone }: { on: Record<AgentKey, boolean>; 
           They all write in your voice: <span className="font-medium text-ink">&ldquo;{tone}&rdquo;</span>
         </p>
       )}
+      <div className="animate-fade-up" style={{ animationDelay: `${AGENTS.length * 90}ms` }}>
+        <VoiceUpload tone={tone} />
+      </div>
     </div>
   );
 }
