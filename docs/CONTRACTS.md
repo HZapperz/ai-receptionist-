@@ -1,6 +1,6 @@
 # CONTRACTS: frozen interfaces
 
-Change anything here only after telling the whole team. Schema source of truth: `supabase/migrations/` (0001_init, 0002_ai_gate, 0003_auth_read, applied in that order; a schema change is a new numbered file).
+Change anything here only after telling the whole team. Schema source of truth: `supabase/migrations/` (0001_init, 0002_ai_gate, 0003_auth_read, 0004_manager, applied in that order; a schema change is a new numbered file).
 
 ## Shared state
 
@@ -17,8 +17,9 @@ Agents never call each other. They hand off work through `tasks` and share knowl
 | tasks | read own, update status | read own, update status | write | read |
 | shared_notes | read, write | read, write | read, write | read |
 | agent_events | write | write | write | read |
+| manager_* | none | none | read, write (service_role) | none (via /agents/manager) |
 
-Dashboard means the browser, signed out (`anon`) or signed in with the dashboard's email login (`authenticated`). Both roles get select only: 0001 and 0002 add `anon_read`, 0003 adds `auth_read` on every table including `ai_sessions`. The browser never writes, logged in or not. The agents service uses the service role key, which bypasses RLS.
+Dashboard means the browser, signed out (`anon`) or signed in with the dashboard's email login (`authenticated`). Both roles get select only: 0001 and 0002 add `anon_read`, 0003 adds `auth_read` on every domain table including `ai_sessions`. Manager tables (`0004_manager`) are service_role-only; the browser interacts with the manager strictly via `/agents/manager` API. The browser never writes directly to Supabase, logged in or not. The agents service uses the service role key, which bypasses RLS.
 
 ## Status values
 
@@ -135,9 +136,11 @@ An error is always `{"error": str}`. Tools never raise to the model.
 
 | Route | Caller | Does |
 | --- | --- | --- |
-| GET /health | anyone | `{"ok": true}` |
+| GET /health | anyone | `{"ok": true, "manager": {...}}` |
 | POST /sms | Twilio | Verify signature, then the 833 gate (below). For a phone in an AI session: insert the message (dedupe on MessageSid), return `<Response/>` at once, run the inbound agent in a background task, reply through the Twilio REST API. Anything else is forwarded to production |
-| POST /manager | dashboard | Body `{"message": str, "history": [{"role", "content"}]}`. Runs the manager agent synchronously, returns `{"reply": str}` |
+| GET /manager | dashboard | Returns manager state snapshot: sessions, messages, events, tasks, approvals, and runtime status |
+| POST /manager | dashboard | Body `{"message": str, "client_id"?: str}`. Enqueues chat event into manager queue, returns `202 Accepted {"event_id", "status"}` |
+| POST /manager/approvals/{id} | dashboard | Body `{"decision": "approve" | "reject"}`. Executes or rejects human-in-the-loop proposal |
 | POST /outbound/find | dashboard | Body `{"term", "area", "limit"}`. Creates and starts a find_leads task |
 | POST /outbound/draft | dashboard | Body `{"lead_ids"}`. Creates and starts a draft_emails task |
 | POST /outbound/send | dashboard | Body `{"lead_id"}`. Checks SEND_ALLOWLIST, sends the saved draft, sets status `sent` |
@@ -158,6 +161,7 @@ The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrit
 | AI_GATE_CODE, AI_GATE_TTL_HOURS, PROD_SMS_WEBHOOK_URL | agents/inbound/gate.py |
 | APIFY_TOKEN, APIFY_ACTOR_ID | agents/outbound/apify_io.py |
 | EMAIL_PROVIDER, EMAIL_API_KEY, EMAIL_FROM, SEND_ALLOWLIST | agents/outbound/email_io.py |
+| MANAGER_SESSION_ID, MANAGER_MODEL, MANAGER_RUNTIME_DIR, OMP_BINARY | agents/manager, agents/runtime/manager_runner.py |
 
 ## 833 gate
 

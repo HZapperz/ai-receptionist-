@@ -1,3 +1,5 @@
+import uuid
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +21,13 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     NEXT_PUBLIC_SUPABASE_URL: str = ""
     NEXT_PUBLIC_SUPABASE_ANON_KEY: str = ""
+    SUPABASE_KEY: str = ""
+
+    # manager & omp runtime
+    MANAGER_SESSION_ID: str = "00000000-0000-0000-0000-000000000001"
+    MANAGER_MODEL: str = ""
+    MANAGER_RUNTIME_DIR: str = str(Path.home() / ".local/share/ai-receptionist")
+    OMP_BINARY: str = "omp"
 
     # dashboard -> agents service
     AGENTS_URL: str = "http://localhost:8000"
@@ -48,6 +57,30 @@ class Settings(BaseSettings):
 
     def send_allowlist(self) -> set[str]:
         return {a.strip().lower() for a in self.SEND_ALLOWLIST.split(",") if a.strip()}
+
+    def effective_service_role_key(self) -> str:
+        return self.SUPABASE_SERVICE_ROLE_KEY or self.SUPABASE_KEY
+
+    def manager_session_uuid(self) -> uuid.UUID:
+        return uuid.UUID(self.MANAGER_SESSION_ID)
+
+    def receptionist_root(self) -> Path:
+        return Path(__file__).resolve().parent.parent
+
+    def runtime_dir(self) -> Path:
+        path = Path(self.MANAGER_RUNTIME_DIR)
+        if not path.is_absolute():
+            path = self.receptionist_root() / path
+        return path
+
+    def workspace_dir(self) -> Path:
+        return self.runtime_dir() / "workspace"
+
+    def sessions_dir(self) -> Path:
+        return self.runtime_dir() / "sessions"
+
+    def lock_path(self) -> Path:
+        return self.runtime_dir() / "manager.lock"
 
 
 settings = Settings()

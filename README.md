@@ -4,7 +4,7 @@ Three agents share one Supabase database:
 
 - **Inbound** answers texts on the business number, quotes, offers slots and books.
 - **Outbound** finds partner leads with Apify and drafts one email per lead. A person clicks Send.
-- **Manager** is a chat box on the dashboard. It reports what happened and hands work to the other two.
+- **Manager** is a persistent OMP chief of staff and chat box on the dashboard with durable queues and human-in-the-loop approvals.
 
 The dashboard has a public landing page, email/password login, a demo onboarding and the live dashboard pages.
 
@@ -17,7 +17,7 @@ Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen 
    - For local work set `LLM_FAKE=true` (no model key needed), `TWILIO_VALIDATE_SIGNATURE=false`, and any `AI_GATE_CODE`.
    - Leave `TWILIO_AUTH_TOKEN` empty: texts are then logged instead of sent.
    - **Never commit a real value.** This repo is public.
-3. **Database:** 0001, 0002 and the first seed were applied to the team's Supabase project (AITX-hackathon) on 2026-09-19; `0003_auth_read.sql` and the new seed still have to be run there (see Dashboard login). For a fresh project, run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `0003_auth_read.sql`, then `supabase/seed.sql` in the SQL editor. The seed is safe to re-run, and its `business_config` statement can be run alone to refresh the business facts.
+3. **Database:** 0001, 0002 and the first seed were applied to the team's Supabase project (AITX-hackathon) on 2026-09-19; `0003_auth_read.sql`, `0004_manager.sql` and the new seed still have to be run there. For a fresh project, run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `0003_auth_read.sql`, then `0004_manager.sql`, then `supabase/seed.sql` in the SQL editor. The seed is safe to re-run, and its `business_config` statement can be run alone to refresh the business facts.
 4. **Python 3.12:** `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
 5. **Node:** `npm install`
 6. **Run:**
@@ -48,7 +48,7 @@ The Twilio number is Royal Pawz's **live** toll-free line, (833) 302-8947, and i
 | --- | --- | --- |
 | Inbound | `agents/runtime`, `agents/inbound` (including the 833 gate), plus the dashboard shell: `app/`, `components/` (except `ManagerChat.tsx`), `lib/`, `proxy.ts` | Real prompt, wire the tools to `agents/booking.py`; landing page, login and dashboard pages |
 | Outbound | `agents/outbound`, `agents/tasks.py` | Check the Apify actor's input schema, real `find_leads` |
-| Manager | `agents/manager`, `components/ManagerChat.tsx` | Read-only manager tools, then `create_task` |
+| Manager | `agents/manager`, `agents/runtime/manager_runner.py`, `components/ManagerChat.tsx`, `lib/manager.ts` | Persistent OMP manager, durable queue, proposals & approvals |
 | Shared, no owner | `supabase/`, `agents/db.py`, `agents/booking.py`, deploys | Announce in the team chat before editing |
 
 Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your lane's. Your to-do list is `grep -rn "STUB: inbound"` (or `outbound`, `manager`, `shared`).

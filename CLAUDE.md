@@ -28,7 +28,7 @@ The demo borrows Royal Pawz's live toll-free number behind a code word (docs/CON
 - Each lane mounts its own FastAPI router, so agents/main.py rarely needs an edit.
 
 ## Commands
-- Database (fresh project): in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, `0002_ai_gate.sql`, `0003_auth_read.sql`, then `supabase/seed.sql`
+- Database (fresh project): in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, `0002_ai_gate.sql`, `0003_auth_read.sql`, `0004_manager.sql`, then `supabase/seed.sql`
 - Python env: `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
 - Agents: `uvicorn agents.main:app --reload --port 8000`
 - Dashboard: `npm run dev`
@@ -41,5 +41,5 @@ The demo borrows Royal Pawz's live toll-free number behind a code word (docs/CON
 | --- | --- |
 | Inbound | agents/runtime, agents/inbound (including the 833 gate), plus the dashboard shell: app/, components/ (except ManagerChat.tsx), lib/, proxy.ts |
 | Outbound | agents/outbound, agents/tasks.py |
-| Manager | agents/manager, components/ManagerChat.tsx |
+| Manager | agents/manager, agents/runtime/manager_runner.py, components/ManagerChat.tsx, lib/manager.ts |
 | Shared, no owner | supabase/, agents/db.py, agents/booking.py, deploys |

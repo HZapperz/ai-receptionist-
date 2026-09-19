@@ -5,24 +5,35 @@ import uuid
 
 def quote(config: dict, args) -> dict:
     """Price a groom from business_config alone. Never trust a total from the model."""
+    if isinstance(args, dict):
+        service_name = args.get("service")
+        size = args.get("size")
+        coat = args.get("coat") or "short"
+        addons = args.get("addons") or []
+    else:
+        service_name = getattr(args, "service", None)
+        size = getattr(args, "size", None)
+        coat = getattr(args, "coat", "short") or "short"
+        addons = getattr(args, "addons", []) or []
+
     services = {s.get("key"): s for s in config.get("services") or [] if isinstance(s, dict)}
-    service = services.get(args.service)
+    service = services.get(service_name)
     if not service:
-        return {"error": f"unknown service '{args.service}'; choose one of: {', '.join(services)}"}
-    base = (service.get("base_cents") or {}).get(args.size)
+        return {"error": f"unknown service '{service_name}'; choose one of: {', '.join(services)}"}
+    base = (service.get("base_cents") or {}).get(size)
     if base is None:
-        return {"error": f"no price for size '{args.size}' on {args.service}"}
-    items = [{"label": f"{service.get('label') or args.service} ({args.size})", "cents": int(base)}]
+        return {"error": f"no price for size '{size}' on {service_name}"}
+    items = [{"label": f"{service.get('label') or service_name} ({size})", "cents": int(base)}]
 
-    coat = int((config.get("coat_surcharge_cents") or {}).get(args.coat) or 0)
-    if coat > 0:
-        items.append({"label": f"{args.coat.capitalize()} coat", "cents": coat})
+    coat_cents = int((config.get("coat_surcharge_cents") or {}).get(coat) or 0)
+    if coat_cents > 0:
+        items.append({"label": f"{coat.capitalize()} coat", "cents": coat_cents})
 
-    addons = {a.get("key"): a for a in config.get("addons") or [] if isinstance(a, dict)}
-    for key in dict.fromkeys(args.addons):  # dedupe, keep order
-        addon = addons.get(key)
+    addons_dict = {a.get("key"): a for a in config.get("addons") or [] if isinstance(a, dict)}
+    for key in dict.fromkeys(addons):  # dedupe, keep order
+        addon = addons_dict.get(key)
         if not addon:
-            return {"error": f"unknown add-on '{key}'; choose one of: {', '.join(addons) or 'none'}"}
+            return {"error": f"unknown add-on '{key}'; choose one of: {', '.join(addons_dict) or 'none'}"}
         items.append({"label": addon.get("label") or key, "cents": int(addon.get("cents") or 0)})
     return {"line_items": items, "total_cents": sum(i["cents"] for i in items)}
 
@@ -59,7 +70,8 @@ def find_booking(db, phone: str, slot_id: str, pet_name: str) -> dict | None:
 
 
 def create_booking(db, *, phone: str, service: str, pet_name: str, details: dict,
-                   slot_id: str, total_cents: int, customer_name: str | None = None) -> dict:
+                   slot_id: str, total_cents: int, customer_name: str | None = None,
+                   config: dict | None = None) -> dict:
     """Upsert the customer (name, and the pet in pets), then insert a confirmed
     booking. The caller has already priced it with quote() and taken the slot.
     A repeated call for the same phone, slot and pet returns the first booking."""
@@ -67,13 +79,19 @@ def create_booking(db, *, phone: str, service: str, pet_name: str, details: dict
     if existing:
         return existing
 
+    name = customer_name or (details.get("customer_name") if isinstance(details, dict) else None)
     rows = db.table("customers").select("pets").eq("phone", phone).limit(1).execute().data
     pets = list((rows[0].get("pets") if rows else None) or [])
     if not any(isinstance(p, dict) and (p.get("name") or "").lower() == pet_name.lower() for p in pets):
-        pets.append({"name": pet_name, **{k: details[k] for k in ("size", "coat") if details.get(k)}})
+        pet_entry = {"name": pet_name}
+        if isinstance(details, dict):
+            for k in ("size", "coat"):
+                if details.get(k):
+                    pet_entry[k] = details[k]
+        pets.append(pet_entry)
     customer = {"phone": phone, "pets": pets}
-    if customer_name:
-        customer["name"] = customer_name
+    if name:
+        customer["name"] = name
     db.table("customers").upsert(customer, on_conflict="phone").execute()
 
     return db.table("bookings").insert({

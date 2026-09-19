@@ -4,12 +4,11 @@ For the team. Read this once before you open your lane. The exact interfaces liv
 
 ## 1. Summary
 
-We are building one "AI employee" for one business, Royal Pawz, made of three agents that share one Supabase database:
+We are building one "AI employee" for one business, Royal Pawz:
 
-- The **inbound agent** answers texts on the business number, quotes, offers slots and books.
+- The **inbound agent** answers texts on the business number, quotes, offers slots and books via Featherless/Qwen.
 - The **outbound agent** finds partner leads with Apify, drafts a personal email for each, and sends when a person clicks Send.
-- The **manager agent** is a chat box on the dashboard. The owner asks it what happened and tells it what to do next. It hands work to the other two.
-
+- The **manager agent** is a persistent **Oh My Pi (OMP)** session and dashboard chat box acting as chief of staff with durable PostgreSQL event queues and human-in-the-loop approvals.
 The agents never call each other. They coordinate through the database. That is the multi-agent story, and it is also what keeps the build simple: each lane can work alone as long as it respects the tables.
 
 The business itself is one config row. Swap the row and the same three agents work for a detailer or a meal-prep company. That sentence is the entire SaaS pitch tonight. Around it sits a landing page, email/password login and a demo onboarding that never writes, but there are still no tenants: one workspace, one config row.
@@ -167,11 +166,11 @@ agents/
   runtime/                   the shared loop, model client, tool registry, events (lane 1)
   inbound/                   prompt, tools, Twilio I/O (lane 1)
   outbound/                  prompt, tools, Apify and email I/O (lane 3)
-  manager/                   prompt, tools (lane 4)
+  manager/                   prompt, tools, queue, tool_cli, extension.ts (lane 4)
   booking.py  db.py          quote, slots, bookings, DB client (lane 2)
   tasks.py                   routes a task row to its agent (lane 3)
-  main.py                    FastAPI routes
-supabase/                    migrations 0001 to 0003 and seed (lane 2)
+  main.py                    FastAPI routes and manager runner lifespan
+supabase/                    migrations 0001 to 0004 and seed (lane 2)
 docs/CONTRACTS.md            frozen interfaces
 CLAUDE.md                    rules every Claude Code session loads
 ```
@@ -183,7 +182,7 @@ Each lane folder has its own `CLAUDE.md`. Claude Code loads the root file in eve
 | 1. Inbound and dashboard shell | `agents/runtime`, `agents/inbound`, `app/`, `components/` (except `ManagerChat.tsx`), `lib/`, `proxy.ts` | Real system prompt, wire the six tools, smoke test against the real model; landing page, login and dashboard pages |
 | 2. Data | `supabase/`, `agents/db.py`, `agents/booking.py`, deploys | Apply the migration and seed, real `quote()`, atomic slot taking, then deploy both services |
 | 3. Outbound | `agents/outbound`, `agents/tasks.py` | Check the Apify actor's input schema, real `find_leads`, then drafting |
-| 4. Manager | `agents/manager`, `components/ManagerChat.tsx` | Read-only manager tools, then `create_task` |
+| 4. Manager | `agents/manager`, `agents/runtime/manager_runner.py`, `components/ManagerChat.tsx`, `lib/manager.ts` | Persistent OMP chief of staff, queue runner, proposals and approvals |
 
 Dropping payments shrank lane 2, so lane 2 also owns deployment and is the first person to help whoever is behind.
 

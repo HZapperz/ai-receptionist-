@@ -36,8 +36,11 @@ def main() -> None:
     db = get_db()
     before = count_events(db)
     with httpx.Client(base_url=BASE, timeout=30) as client:
-        assert client.get("/health").json() == {"ok": True}, "GET /health failed"
-        for i, text in enumerate(TEXTS):
+        health = client.get("/health").json()
+        assert health.get("ok") is True, f"GET /health failed: {health}"
+        # Verify manager endpoint is reachable
+        mgr = client.get("/manager")
+        assert mgr.status_code == 200, f"GET /manager failed: {mgr.status_code}"
             r = client.post("/sms", data={"From": PHONE, "To": "+18333028947",
                                           "Body": text.format(code=settings.AI_GATE_CODE),
                                           "MessageSid": f"SMsmoke{int(time.time() * 1000)}{i}"})

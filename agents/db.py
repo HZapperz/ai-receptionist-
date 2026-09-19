@@ -9,7 +9,10 @@ from agents.settings import settings
 @lru_cache
 def get_db() -> Client:
     """Service-role client. Bypasses RLS, so it stays in this process."""
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    key = settings.effective_service_role_key()
+    if not settings.SUPABASE_URL or not key:
+        raise RuntimeError("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_KEY)")
+    return create_client(settings.SUPABASE_URL, key)
 
 
 def load_config(db) -> dict:
