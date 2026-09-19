@@ -1,9 +1,47 @@
 # Shared area: announce in the team chat before editing (see CLAUDE.md).
+import logging
 from functools import lru_cache
 
+import httpx
 from supabase import Client, create_client
 
 from agents.settings import settings
+
+logger = logging.getLogger(__name__)
+
+# postgrest hardcodes http2=True on its pooled httpx client. Supabase closes idle HTTP/2
+# connections, httpx does not reconnect by itself, and the next call fails with
+# RemoteProtocolError("Server disconnected"), which a route turns into a 500. postgrest's
+# own retry only looks at Cloudflare status codes, so a transport error never reaches it.
+_DROPPED = (httpx.RemoteProtocolError, httpx.ReadError)
+# These fail before the server sees anything, so they are safe to retry on any method.
+_NOT_SENT = (httpx.ConnectError, httpx.ConnectTimeout, httpx.WriteError)
+_IDEMPOTENT = {"GET", "HEAD", "OPTIONS"}
+
+
+def _retry_dropped_connection(client: Client) -> Client:
+    """Retry once when a pooled connection was closed under us.
+
+    A read that dies mid-flight is only replayed for GET/HEAD: an insert could have been
+    applied before the connection dropped, and replaying it would duplicate the row.
+    """
+    session = client.postgrest.session
+    send = session.request
+
+    def request(method, *args, **kwargs):
+        try:
+            return send(method, *args, **kwargs)
+        except _NOT_SENT as exc:
+            logger.warning("Supabase connection failed (%s); retrying %s", exc, method)
+            return send(method, *args, **kwargs)
+        except _DROPPED as exc:
+            if str(method).upper() not in _IDEMPOTENT:
+                raise
+            logger.warning("Supabase dropped an idle connection (%s); retrying %s", exc, method)
+            return send(method, *args, **kwargs)
+
+    session.request = request
+    return client
 
 
 @lru_cache
@@ -12,7 +50,7 @@ def get_db() -> Client:
     key = settings.effective_service_role_key()
     if not settings.SUPABASE_URL or not key:
         raise RuntimeError("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_KEY)")
-    return create_client(settings.SUPABASE_URL, key)
+    return _retry_dropped_connection(create_client(settings.SUPABASE_URL, key))
 
 
 def load_config(db) -> dict:

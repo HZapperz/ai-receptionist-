@@ -10,7 +10,7 @@ from agents.manager.routes import router as manager_router
 from agents.outbound.routes import router as outbound_router
 from agents.outbound.report_routes import router as report_router
 from agents.outbound.report_scheduler import worker as report_worker
-from agents.runtime.manager_runner import runner as manager_runner
+from agents.runtime.manager_py_runner import runner as manager_runner
 from agents.tasks import run_pending
 
 logging.basicConfig(level=logging.INFO)

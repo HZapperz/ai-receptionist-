@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from agents.db import get_db
 from agents.manager.queue import QueueError, queue
-from agents.runtime.manager_runner import runner
+from agents.runtime.manager_py_runner import runner
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
