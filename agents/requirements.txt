@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic>=2
+pydantic-settings
+openai>=1.40
+supabase>=2
+twilio
+apify-client
+python-multipart
+httpx
+resend
