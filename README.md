@@ -6,6 +6,8 @@ Three agents share one Supabase database:
 - **Outbound** finds partner leads with Apify and drafts one email per lead. A person clicks Send.
 - **Manager** is a chat box on the dashboard. It reports what happened and hands work to the other two.
 
+The dashboard has a public landing page, email/password login, a demo onboarding and the live dashboard pages.
+
 Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen interfaces: [docs/CONTRACTS.md](docs/CONTRACTS.md).
 
 ## Quickstart (about 5 minutes)
@@ -15,15 +17,24 @@ Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen 
    - For local work set `LLM_FAKE=true` (no model key needed), `TWILIO_VALIDATE_SIGNATURE=false`, and any `AI_GATE_CODE`.
    - Leave `TWILIO_AUTH_TOKEN` empty: texts are then logged instead of sent.
    - **Never commit a real value.** This repo is public.
-3. **Database:** already applied to the team's Supabase project (AITX-hackathon) on 2026-09-19. For a fresh project, run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `supabase/seed.sql` in the SQL editor.
+3. **Database:** 0001, 0002 and the first seed were applied to the team's Supabase project (AITX-hackathon) on 2026-09-19; `0003_auth_read.sql` and the new seed still have to be run there (see Dashboard login). For a fresh project, run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `0003_auth_read.sql`, then `supabase/seed.sql` in the SQL editor. The seed is safe to re-run, and its `business_config` statement can be run alone to refresh the business facts.
 4. **Python 3.12:** `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
 5. **Node:** `npm install`
 6. **Run:**
    - Agents: `uvicorn agents.main:app --reload --port 8000`
-   - Dashboard: `npm run dev`, then open http://localhost:3000
+   - Dashboard: `npm run dev`, then open http://localhost:3000 and sign in (see Dashboard login)
 7. **Check:**
    - `python -m agents.tests.smoke` (needs the agents service running)
    - `python -m agents.tests.test_gate` (runs in-process)
+
+### Dashboard login
+The dashboard sits behind Supabase email/password login; `/` is public. Set up once per Supabase project, in the Supabase dashboard:
+1. **SQL editor:** run `supabase/migrations/0003_auth_read.sql`. A signed-in browser reads as `authenticated`, and without this every panel is empty.
+2. **Auth > Providers > Email:** turn off "Confirm email", so signup lands straight in the app.
+3. **Auth > URL Configuration:** set the Site URL to the Vercel URL, and add `http://localhost:3000/**` and the Vercel URL to the redirect URLs.
+4. **Auth > Users > Add user:** create the demo login with auto-confirm on. Share it privately, never in git.
+
+Teammates now sign in (or sign up) to see the dashboard. The agents service has no login; its `/agents/*` routes stay open.
 
 ### Texting the agent
 The Twilio number is Royal Pawz's **live** toll-free line, (833) 302-8947, and it also carries real customers. **Do not point its webhook anywhere.**
@@ -35,9 +46,9 @@ The Twilio number is Royal Pawz's **live** toll-free line, (833) 302-8947, and i
 
 | Lane | Owns | First job |
 | --- | --- | --- |
-| Inbound | `agents/runtime`, `agents/inbound` (including the 833 gate) | Real prompt, wire the tools to `agents/booking.py` |
+| Inbound | `agents/runtime`, `agents/inbound` (including the 833 gate), plus the dashboard shell: `app/`, `components/` (except `ManagerChat.tsx`), `lib/`, `proxy.ts` | Real prompt, wire the tools to `agents/booking.py`; landing page, login and dashboard pages |
 | Outbound | `agents/outbound`, `agents/tasks.py` | Check the Apify actor's input schema, real `find_leads` |
-| Manager | `agents/manager`, `app/`, `components/`, `lib/` | Read-only manager tools, then the panels |
+| Manager | `agents/manager`, `components/ManagerChat.tsx` | Read-only manager tools, then `create_task` |
 | Shared, no owner | `supabase/`, `agents/db.py`, `agents/booking.py`, deploys | Announce in the team chat before editing |
 
 Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your lane's. Your to-do list is `grep -rn "STUB: inbound"` (or `outbound`, `manager`, `shared`).
@@ -45,7 +56,7 @@ Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your 
 **Git:** everyone works on `main`. Run `git pull --rebase` before you start and before each push, and run the smoke test before you push.
 
 ## Deploy
-- **Dashboard:** Vercel, with `AGENTS_URL` set to the agents host and the two `NEXT_PUBLIC_SUPABASE_*` vars.
+- **Dashboard:** Vercel, with `AGENTS_URL` set to the agents host and the two `NEXT_PUBLIC_SUPABASE_*` vars. Add the Vercel URL to Supabase's Auth redirect URLs (see Dashboard login).
 - **Agents service:** an always-on host (Railway or Render), never serverless. From the repo root, the start command is `uvicorn agents.main:app --host 0.0.0.0 --port $PORT`.
   - Set every var from `.env.example`.
   - `PUBLIC_AGENTS_URL` must be the host's public URL, or Twilio signatures will not validate.
@@ -59,6 +70,7 @@ Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your 
   - New env vars: `AI_GATE_CODE`, `AI_GATE_TTL_HOURS`, `PROD_SMS_WEBHOOK_URL`.
 - **No ngrok step.** Nobody repoints the Twilio number except the owner, through the cutover runbook.
 - **Next.js 16.** create-next-app wrote `AGENTS.md` (Next's agent rules), which `app/CLAUDE.md` imports. `.gitignore` ignores every `.env*` except `.env.example`.
+- **Dashboard login.** BOOTSTRAP had no auth. The dashboard now has Supabase email/password login (`proxy.ts`), and `0003_auth_read.sql` gives signed-in browsers the same select-only access as anon. The agents service still has no auth.
 - **Seed fix.** `supabase/seed.sql` casts `d::date` before converting to Houston time. The BOOTSTRAP version shifted the zone twice, so slots landed at 11pm, 2am and 5am instead of 9am, noon and 3pm.
 - **Python 3.12,** pinned in `.python-version`.
 - **Extras:** `.claude/settings.json` allowlists the common dev commands for Claude Code, and a gitleaks GitHub Action scans every push for secrets.

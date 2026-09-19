@@ -1,6 +1,6 @@
 # CONTRACTS: frozen interfaces
 
-Change anything here only after telling the whole team. Schema source of truth: `supabase/migrations/` (0001_init, 0002_ai_gate; a schema change is a new numbered file).
+Change anything here only after telling the whole team. Schema source of truth: `supabase/migrations/` (0001_init, 0002_ai_gate, 0003_auth_read, applied in that order; a schema change is a new numbered file).
 
 ## Shared state
 
@@ -17,6 +17,8 @@ Agents never call each other. They hand off work through `tasks` and share knowl
 | tasks | read own, update status | read own, update status | write | read |
 | shared_notes | read, write | read, write | read, write | read |
 | agent_events | write | write | write | read |
+
+Dashboard means the browser, signed out (`anon`) or signed in with the dashboard's email login (`authenticated`). Both roles get select only: 0001 and 0002 add `anon_read`, 0003 adds `auth_read` on every table including `ai_sessions`. The browser never writes, logged in or not. The agents service uses the service role key, which bypasses RLS.
 
 ## Status values
 
@@ -108,7 +110,7 @@ class CreateTaskArgs(BaseModel):
 | recall | `{"notes": [{"note", "written_by", "created_at"}]}` newest first, max 10 |
 | get_info | `{"text": str}` |
 | quote | `{"line_items": [{"label", "cents"}], "total_cents": int}` |
-| find_slots | `{"slots": [{"slot_id", "starts_at"}]}` max 3, only slots with room |
+| find_slots | `{"slots": [{"slot_id", "starts_at", "label"}]}` max 3, only slots with room. `starts_at` is Houston-local ISO (`2026-09-26T09:00:00-05:00`); `label` is human text such as "Sat Sep 26, 9:00 AM". Adds `"note": str` when nothing was open in the requested range and it returned the next open slots instead |
 | book | `{"booking_id", "starts_at", "total_cents", "status": "confirmed"}` or `{"error": "slot_taken"}`. Recomputes the price in code; never trusts a total from the model. |
 | lookup_lead | `{"found": bool, "lead_id", "name", "status"}`. Sets the lead to `replied` when found. |
 | escalate | `{"ok": true}`. Texts OWNER_PHONE with the summary. |
@@ -141,7 +143,7 @@ An error is always `{"error": str}`. Tools never raise to the model.
 | POST /outbound/send | dashboard | Body `{"lead_id"}`. Checks SEND_ALLOWLIST, sends the saved draft, sets status `sent` |
 | POST /tasks/run | dashboard | Runs any pending tasks. The manual kick |
 
-The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrites to `AGENTS_URL`.
+The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrites to `AGENTS_URL`. `proxy.ts` (the dashboard login guard) excludes `/agents`, so these routes are not behind the login.
 
 ## Env vars
 
@@ -149,7 +151,7 @@ The dashboard calls these as `/agents/<route>` on its own origin. Next.js rewrit
 | --- | --- |
 | LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_MAX_CONCURRENCY, LLM_DISABLE_THINKING, LLM_FAKE | agents/runtime/llm.py |
 | SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY | agents/db.py |
-| NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY | lib/supabase.ts |
+| NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY | lib/supabase.ts, lib/supabase-server.ts, proxy.ts |
 | AGENTS_URL | next.config rewrite |
 | TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, TWILIO_VALIDATE_SIGNATURE, PUBLIC_AGENTS_URL, OWNER_PHONE | agents/inbound/twilio_io.py |
 | AI_GATE_CODE, AI_GATE_TTL_HOURS, PROD_SMS_WEBHOOK_URL | agents/inbound/gate.py |

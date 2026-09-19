@@ -2,6 +2,8 @@
 
 You own agents/runtime and agents/inbound. Everyone else imports the runtime and never edits it, so keep its interfaces exactly as docs/CONTRACTS.md and the existing code define them. agents/booking.py is in the shared area: you are its main user, so you will usually be the one filling in quote(), take_slot() and create_booking(). Announce it in the team chat first.
 
+This lane also owns the dashboard shell: app/, components/ (except ManagerChat.tsx), lib/ and proxy.ts. Its rules are in app/CLAUDE.md.
+
 ## What this agent is
 The texting front desk for Royal Pawz. A customer or a partner lead texts the business number. The agent answers questions, quotes, offers slots, books, and recognizes leads who mention their property.
 
@@ -23,6 +25,8 @@ get_info, quote, find_slots, book, lookup_lead, escalate, plus remember and reca
 If `data/sms-export/` exists on your machine, it holds Royal Pawz's real SMS history, anonymized: 3,162 texts, and `reply_pairs.jsonl` with what customers asked and how staff answered. Read its README first. Use it for tone and example replies. It is gitignored; never copy its contents into committed files.
 
 ## Prompt rules
+agents/inbound/prompt.py builds the prompt from business_config, then injects two sections per run: "What we know about this customer" (the customers row plus `customer:<phone>` notes) and "Recent tool results" (the last find_slots, quote and book results for this phone from agent_events). History is text only, so the second section is how "the 9am one" can be booked without re-querying slots.
+
 - First reply in a conversation says it is Royal Pawz's AI assistant.
 - Under 320 characters per reply. Match the customer's language.
 - Never state a price or a time that did not come from a tool result.

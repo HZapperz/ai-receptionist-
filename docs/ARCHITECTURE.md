@@ -12,7 +12,7 @@ We are building one "AI employee" for one business, Royal Pawz, made of three ag
 
 The agents never call each other. They coordinate through the database. That is the multi-agent story, and it is also what keeps the build simple: each lane can work alone as long as it respects the tables.
 
-The business itself is one config row. Swap the row and the same three agents work for a detailer or a meal-prep company. That sentence is the entire SaaS pitch tonight. We are not building tenants, signup or onboarding.
+The business itself is one config row. Swap the row and the same three agents work for a detailer or a meal-prep company. That sentence is the entire SaaS pitch tonight. Around it sits a landing page, email/password login and a demo onboarding that never writes, but there are still no tenants: one workspace, one config row.
 
 **Payments are out of scope.** A booking is confirmed the moment the inbound agent books it. There is no pay link, no Stripe and no webhook.
 
@@ -109,7 +109,7 @@ Who may read and write each table:
 | shared_notes | read, write | read, write | read, write | read |
 | agent_events | write | write | write | read |
 
-Row-level security is on for every table with a single policy: the browser's anon key can select and nothing else. The agents service uses the service role key. Nobody can scribble on the demo from a browser console. Use demo data only, because judges' phone numbers will be in `messages`.
+Row-level security is on for every table with select-only policies: the browser can select, signed out (`anon`) or signed in to the dashboard (`authenticated`, from `0003_auth_read`), and nothing else. The agents service uses the service role key. Nobody can scribble on the demo from a browser console. Use demo data only, because judges' phone numbers will be in `messages`.
 
 ## 6. Two flows worth seeing
 
@@ -161,7 +161,8 @@ sequenceDiagram
 One repo, two runtimes. Python cannot live in Next's `/lib`, so the agents get a top-level `/agents` folder and `/lib` stays TypeScript.
 
 ```text
-app/  components/  lib/      Next.js dashboard (lane 4)
+app/  components/  lib/      Next.js landing page, login, onboarding and dashboard (lane 1 shell; ManagerChat.tsx is lane 4)
+proxy.ts                     login guard for /dashboard and /onboarding (lane 1 shell)
 agents/
   runtime/                   the shared loop, model client, tool registry, events (lane 1)
   inbound/                   prompt, tools, Twilio I/O (lane 1)
@@ -170,7 +171,7 @@ agents/
   booking.py  db.py          quote, slots, bookings, DB client (lane 2)
   tasks.py                   routes a task row to its agent (lane 3)
   main.py                    FastAPI routes
-supabase/                    migration and seed (lane 2)
+supabase/                    migrations 0001 to 0003 and seed (lane 2)
 docs/CONTRACTS.md            frozen interfaces
 CLAUDE.md                    rules every Claude Code session loads
 ```
@@ -179,10 +180,10 @@ Each lane folder has its own `CLAUDE.md`. Claude Code loads the root file in eve
 
 | Lane | Owns | First job after the bootstrap |
 | --- | --- | --- |
-| 1. Inbound | `agents/runtime`, `agents/inbound` | Real system prompt, wire the six tools, smoke test against the real model |
+| 1. Inbound and dashboard shell | `agents/runtime`, `agents/inbound`, `app/`, `components/` (except `ManagerChat.tsx`), `lib/`, `proxy.ts` | Real system prompt, wire the six tools, smoke test against the real model; landing page, login and dashboard pages |
 | 2. Data | `supabase/`, `agents/db.py`, `agents/booking.py`, deploys | Apply the migration and seed, real `quote()`, atomic slot taking, then deploy both services |
 | 3. Outbound | `agents/outbound`, `agents/tasks.py` | Check the Apify actor's input schema, real `find_leads`, then drafting |
-| 4. Manager and dashboard | `app/`, `components/`, `lib/`, `agents/manager` | Read-only manager tools, then the four panels on Realtime |
+| 4. Manager | `agents/manager`, `components/ManagerChat.tsx` | Read-only manager tools, then `create_task` |
 
 Dropping payments shrank lane 2, so lane 2 also owns deployment and is the first person to help whoever is behind.
 
@@ -220,10 +221,11 @@ The browser only calls `/agents/*` on its own origin. Next.js rewrites that to `
 | In | Out |
 | --- | --- |
 | Inbound SMS agent: info, quote, slots, confirmed booking, lead recognition | Payments of any kind |
-| Outbound agent: Apify leads, personal drafts, click to send | Signup, login, tenants, onboarding |
+| Outbound agent: Apify leads, personal drafts, click to send | Tenants, real onboarding, social or magic-link login |
 | Manager agent: reports and task hand-offs | Free-form SQL, scheduled jobs, queues |
 | Shared notes across agents | Voice, calendar sync |
-| One dashboard page with four live panels | Any integration with the Royal Pawz production system |
+| Landing page, email/password login, a demo onboarding that never writes | Any integration with the Royal Pawz production system |
+| Dashboard pages on Realtime: overview, inbox, leads, bookings, activity, manager, settings | Login in front of the agents service's `/agents/*` routes |
 
 ## 11. Plan
 
@@ -254,7 +256,7 @@ Never cut: a text that ends in a confirmed booking, a Leads panel with personal 
 
 | Question | Default if nobody answers |
 | --- | --- |
-| Real Royal Pawz services, prices, zips, policies? | Placeholders in `seed.sql`, flagged `_placeholder`, until Hamza replaces them |
+| Real Royal Pawz services, prices, zips, policies? | Real values from the SMS export are in `seed.sql`; the assumptions still to confirm are listed in the config's `_notes` |
 | Who does outbound target? | Pet-friendly apartment communities in Houston. Vets and daycares are a search-term swap. |
 | Which verified sender and email provider? | Whatever the team already sends from; `EMAIL_PROVIDER` picks the client |
 | Which addresses go on the allowlist? | The team's, plus judges added at the table |

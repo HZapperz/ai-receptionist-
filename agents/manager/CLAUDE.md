@@ -1,6 +1,6 @@
-# Manager lane (agent half): manager agent
+# Manager lane: manager agent and ManagerChat
 
-You own agents/manager, plus app/, components/ and lib/ (see app/CLAUDE.md).
+You own agents/manager and components/ManagerChat.tsx. The rest of the dashboard (app/, components/, lib/) belongs to the inbound/shell lane; ask before editing it. The dashboard mounts `<ManagerChat />` with no props on the Overview and Manager pages, so keep that export name and keep it prop-free.
 
 ## What this agent is
 The owner's chief of staff on the dashboard. It answers questions about the business from real data and hands work to the other two agents by writing tasks.
