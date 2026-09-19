@@ -38,8 +38,8 @@ export function Hero() {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button href="/signup" size="lg">
-              Get started
+            <Button href="/dashboard" size="lg">
+              Open Dashboard
               <ArrowRight />
             </Button>
             <Button href="#how" size="lg" variant="outline">

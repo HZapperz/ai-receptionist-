@@ -34,8 +34,8 @@ export function Nav() {
           <Button href="/login" variant="ghost" size="sm">
             Sign in
           </Button>
-          <Button href="/signup" size="sm">
-            Get started
+          <Button href="/dashboard" size="sm">
+            Open Dashboard
           </Button>
         </div>
 

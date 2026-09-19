@@ -25,14 +25,29 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </p>
       </div>
 
-      <LoginForm next={next} />
+      <div className="rounded-xl border border-line bg-canvas p-4 text-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-ink">Ready-made Demo Account</span>
+          <span className="rounded bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">Auto-verified</span>
+        </div>
+        <div className="space-y-1 text-xs text-muted">
+          <p>Email: <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-ink font-semibold">demo@royalpawz.com</code></p>
+          <p>Password: <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-ink font-semibold">RoyalPawz2026!</code></p>
+        </div>
+        <Link
+          href={next || "/dashboard"}
+          className="flex w-full items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-hover shadow-sm"
+        >
+          Bypass Login &rarr; Open Dashboard
+        </Link>
+      </div>
 
-      <p className="flex items-start gap-2 rounded-lg bg-brand-soft px-3 py-2.5 text-sm text-ink/80">
-        <Info className="mt-0.5 size-4 shrink-0 text-brand" />
-        <span>
-          <span className="font-medium text-ink">Here for the demo?</span> The team will give you the demo account login.
-        </span>
-      </p>
+      <div className="relative flex items-center justify-center">
+        <div className="w-full border-t border-line" />
+        <span className="bg-surface px-3 text-xs uppercase text-muted tracking-wider">or sign in below</span>
+      </div>
+
+      <LoginForm next={next} />
 
       <p className="text-center text-sm text-muted">
         New to {BRAND.name}?{" "}

@@ -17,8 +17,8 @@ export function CtaBand() {
           Load your business, connect your number, and watch the first conversation land on your dashboard.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Button href="/signup" size="lg" variant="outline">
-            Get started
+          <Button href="/dashboard" size="lg" variant="outline">
+            Open Dashboard
             <ArrowRight />
           </Button>
           <Link href="/login" className="text-sm font-medium text-white/85 underline-offset-4 hover:text-white hover:underline">
