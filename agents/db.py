@@ -20,11 +20,26 @@ _IDEMPOTENT = {"GET", "HEAD", "OPTIONS"}
 
 
 def _retry_dropped_connection(client: Client) -> Client:
-    """Retry once when a pooled connection was closed under us.
+    """Stop pooled connections going stale, and retry the ones that still do.
 
-    A read that dies mid-flight is only replayed for GET/HEAD: an insert could have been
-    applied before the connection dropped, and replaying it would duplicate the row.
+    The real fix is dropping to HTTP/1.1: httpx can tell a closed HTTP/1.1 socket is dead
+    before it reuses it, which it cannot do for an HTTP/2 connection the server has already
+    gone away on. That is what turned an inbound text into a 500. The short keepalive
+    retires idle connections before Supabase does.
+
+    The retry is then only a backstop, and a read that dies mid-flight is replayed only for
+    GET/HEAD: an insert could have been applied before the connection dropped, and
+    replaying it would duplicate the row.
     """
+    old = client.postgrest.session
+    client.postgrest.session = httpx.Client(
+        base_url=old.base_url,
+        headers=old.headers,
+        timeout=old.timeout,
+        follow_redirects=True,
+        http2=False,
+        limits=httpx.Limits(max_keepalive_connections=10, keepalive_expiry=15.0),
+    )
     session = client.postgrest.session
     send = session.request
 

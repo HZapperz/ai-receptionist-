@@ -43,6 +43,9 @@ def _unsendable(text: str) -> bool:
 
 
 async def run_agent(spec: AgentSpec, messages: list[dict], ctx: Ctx, max_steps: int = 6) -> str:
+    # Which concurrency budget this turn draws from, so the 833 line never waits behind
+    # the dashboard. Each task carries its own copy, so this does not leak across turns.
+    llm.current_lane.set(ctx.agent or "other")
     msgs: list[dict] = [{"role": "system", "content": spec.system_prompt(ctx)}, *messages]
     schemas = [t.schema() for t in spec.tools]
     for _ in range(max_steps):

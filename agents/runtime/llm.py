@@ -1,4 +1,6 @@
 import asyncio
+import contextvars
+import os
 import random
 import re
 from types import SimpleNamespace
@@ -9,9 +11,26 @@ from agents.settings import settings
 
 _client = AsyncOpenAI(base_url=settings.LLM_BASE_URL, api_key=settings.effective_llm_api_key() or "x", timeout=90)
 _RETRY = (RateLimitError, APITimeoutError, APIConnectionError, InternalServerError)
+
 # A 24B-34B model costs 2 concurrency units per in-flight call on Featherless.
 # The team plan has 100 units (GET /v1/plan), so LLM_MAX_CONCURRENCY=6 is safe.
-_sem = asyncio.Semaphore(settings.LLM_MAX_CONCURRENCY)
+#
+# One shared semaphore let a dashboard turn or a research job hold every slot while a
+# customer's text waited behind it. Each lane now has its own budget, so a person texting
+# the 833 line never queues behind the owner's screen. run_agent() sets the lane from
+# ctx.agent; each asyncio task gets its own copy of this, so lanes cannot bleed together.
+current_lane: contextvars.ContextVar[str] = contextvars.ContextVar("llm_lane", default="other")
+_LANE_LIMITS = {
+    "inbound": settings.LLM_MAX_CONCURRENCY,
+    "manager": int(os.environ.get("LLM_MANAGER_CONCURRENCY", "1")),
+    "outbound": int(os.environ.get("LLM_OUTBOUND_CONCURRENCY", "1")),
+    "other": 1,
+}
+_sems = {lane: asyncio.Semaphore(max(1, n)) for lane, n in _LANE_LIMITS.items()}
+
+
+def _sem() -> asyncio.Semaphore:
+    return _sems.get(current_lane.get(), _sems["other"])
 # A think block, or one cut off by max_tokens that runs to the end.
 _THINK = re.compile(r"<think>.*?(?:</think>|\Z)", re.DOTALL)
 
@@ -46,7 +65,7 @@ async def chat(messages: list[dict], tools: list[dict] | None = None, max_tokens
         kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
     for attempt in range(4):
         try:
-            async with _sem:
+            async with _sem():
                 resp = await _client.chat.completions.create(**kwargs)
             if resp.choices:
                 return resp
