@@ -19,6 +19,9 @@ The real logic is already written and tested (`python -m agents.tests.test_gate`
 ## Tools
 get_info, quote, find_slots, book, lookup_lead, escalate, plus remember and recall from runtime/shared_tools.py. quote and book call agents/booking.py. Until someone fills those in, the stubs there return fixed values.
 
+## Real conversations (local only)
+If `data/sms-export/` exists on your machine, it holds Royal Pawz's real SMS history, anonymized: 3,162 texts, and `reply_pairs.jsonl` with what customers asked and how staff answered. Read its README first. Use it for tone and example replies. It is gitignored; never copy its contents into committed files.
+
 ## Prompt rules
 - First reply in a conversation says it is Royal Pawz's AI assistant.
 - Under 320 characters per reply. Match the customer's language.

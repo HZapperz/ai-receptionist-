@@ -50,3 +50,6 @@ __pycache__/
 # local supabase CLI state
 supabase/.branches
 supabase/.temp
+
+# local data (the anonymized Royal Pawz SMS export). Never committed: this repo is public.
+/data/
