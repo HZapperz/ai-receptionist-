@@ -13,11 +13,14 @@ type Customer = { name: string | null; pets: { name?: string }[] | null };
 
 // Threads on the left, the selected conversation on the right. Only AI-session phones are stored,
 // so every thread here is a conversation the AI handled.
-export function InboxView() {
+// linked is a message id from a link on the Overview (?m=<id>): it opens that message's thread.
+// Links name a message, never a phone, so the number stays out of the URL.
+export function InboxView({ linked }: { linked?: string }) {
   const messages = useTable<Message>("messages", 500);
   const threads = groupThreads(messages);
   const [selected, setSelected] = useState<string | null>(null);
-  const thread = threads.find((t) => t.phone === selected) ?? threads[0];
+  const linkedPhone = linked ? messages.find((m) => String(m.id) === linked)?.phone : undefined;
+  const thread = threads.find((t) => t.phone === (selected ?? linkedPhone)) ?? threads[0];
   const phone = thread?.phone;
   const count = thread?.messages.length ?? 0;
 

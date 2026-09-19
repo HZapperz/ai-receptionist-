@@ -4,6 +4,7 @@ import { CalendarCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { money, houstonTime, maskPhone, timeAgo } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { useNow } from "@/lib/useNow";
 import { useTable, type Row } from "@/lib/useTable";
 import { Empty, Panel, StatusBadge } from "./Panel";
 
@@ -47,18 +48,23 @@ function useSlotTimes(bookings: Booking[]): Record<string, string> {
 }
 
 // Overview list: pet, service and appointment on the left, price and status on the right.
+// Soonest appointment first; past ones (and any whose time has not loaded) follow, dimmed.
 export function BookingsPanel({ className }: { className?: string }) {
   const bookings = useTable<Booking>("bookings");
   const slotTimes = useSlotTimes(bookings);
+  const now = useNow();
+  const at = (b: Booking) => (b.slot_id && slotTimes[b.slot_id] ? new Date(slotTimes[b.slot_id]).getTime() : NaN);
+  const upcoming = bookings.filter((b) => at(b) >= now).sort((a, b) => at(a) - at(b));
+  const rest = bookings.filter((b) => !(at(b) >= now));
 
   return (
-    <Panel title="Bookings" count={bookings.length} className={className} flush>
+    <Panel title="Upcoming appointments" count={upcoming.length} className={className} flush>
       {bookings.length === 0 ? (
         <Empty icon={CalendarCheck}>{EMPTY}</Empty>
       ) : (
         <ul className="divide-y divide-line">
-          {bookings.map((b) => (
-            <li key={b.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+          {[...upcoming, ...rest].map((b) => (
+            <li key={b.id} className={`flex items-center justify-between gap-3 px-4 py-2.5 ${at(b) >= now ? "" : "opacity-60"}`}>
               <div className="min-w-0">
                 <p className="truncate font-medium text-ink">
                   {b.pet_name ?? "Pet"} <span className="font-normal text-muted">· {serviceLabel(b.service)}</span>
