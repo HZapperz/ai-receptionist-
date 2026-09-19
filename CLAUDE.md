@@ -32,7 +32,7 @@ The demo borrows Royal Pawz's live toll-free number behind a code word (docs/CON
 - Agents: `uvicorn agents.main:app --reload --port 8000`
 - Dashboard: `npm run dev`
 - Smoke test: `python -m agents.tests.smoke` (with the agents service running)
-- Gate test: `python -m agents.tests.test_gate` (with the agents service running)
+- Gate test: `python -m agents.tests.test_gate` (runs in-process; needs the Supabase vars in .env)
 - To-do list for your lane: `grep -rn "STUB: <lane>"`, where lane is inbound, outbound, manager or shared
 
 ## Lanes

@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uvicorn agents.main:app:*)",
+      "Bash(python -m agents.tests.smoke)",
+      "Bash(python -m agents.tests.test_gate)",
+      "Bash(.venv/bin/python -m agents.tests.smoke)",
+      "Bash(.venv/bin/python -m agents.tests.test_gate)",
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(git pull --rebase)",
+      "Bash(git push)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(grep -rn \"STUB:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)"
+    ]
+  }
+}

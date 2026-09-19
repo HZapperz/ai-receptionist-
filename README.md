@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Royal Pawz AI employee
 
-## Getting Started
+Three agents share one Supabase database:
 
-First, run the development server:
+- **Inbound** answers texts on the business number, quotes, offers slots and books.
+- **Outbound** finds partner leads with Apify and drafts one email per lead. A person clicks Send.
+- **Manager** is a chat box on the dashboard. It reports what happened and hands work to the other two.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Why it looks this way: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The frozen interfaces: [docs/CONTRACTS.md](docs/CONTRACTS.md).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quickstart (about 5 minutes)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone:** `git clone https://github.com/HZapperz/ai-receptionist-.git && cd ai-receptionist-`
+2. **Env:** `cp .env.example .env && cp .env.example .env.local`, then fill both with the values the team shared privately.
+   - For local work set `LLM_FAKE=true` (no model key needed), `TWILIO_VALIDATE_SIGNATURE=false`, and any `AI_GATE_CODE`.
+   - Leave `TWILIO_AUTH_TOKEN` empty: texts are then logged instead of sent.
+   - **Never commit a real value.** This repo is public.
+3. **Database** (once, by whoever set up the Supabase project): in the Supabase SQL editor run `supabase/migrations/0001_init.sql`, then `0002_ai_gate.sql`, then `supabase/seed.sql`.
+4. **Python 3.12:** `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -r agents/requirements.txt`
+5. **Node:** `npm install`
+6. **Run:**
+   - Agents: `uvicorn agents.main:app --reload --port 8000`
+   - Dashboard: `npm run dev`, then open http://localhost:3000
+7. **Check:**
+   - `python -m agents.tests.smoke` (needs the agents service running)
+   - `python -m agents.tests.test_gate` (runs in-process)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Texting the agent
+The Twilio number is Royal Pawz's **live** toll-free line, (833) 302-8947, and it also carries real customers. **Do not point its webhook anywhere.**
+- **In development**, test `/sms` with the smoke test or curl.
+- **For the demo**, the owner switches the webhook to this service by following [docs/TWILIO-833-CUTOVER.md](docs/TWILIO-833-CUTOVER.md).
+- **Once live**, a phone that texts the gate code talks to the agent, and every other text goes on to the real team untouched.
 
-## Learn More
+## Which folder is mine?
 
-To learn more about Next.js, take a look at the following resources:
+| Lane | Owns | First job |
+| --- | --- | --- |
+| Inbound | `agents/runtime`, `agents/inbound` (including the 833 gate) | Real prompt, wire the tools to `agents/booking.py` |
+| Outbound | `agents/outbound`, `agents/tasks.py` | Check the Apify actor's input schema, real `find_leads` |
+| Manager | `agents/manager`, `app/`, `components/`, `lib/` | Read-only manager tools, then the panels |
+| Shared, no owner | `supabase/`, `agents/db.py`, `agents/booking.py`, deploys | Announce in the team chat before editing |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open Claude Code in your lane's folder; it loads the root `CLAUDE.md` plus your lane's. Your to-do list is `grep -rn "STUB: inbound"` (or `outbound`, `manager`, `shared`).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Git:** everyone works on `main`. Run `git pull --rebase` before you start and before each push, and run the smoke test before you push.
 
-## Deploy on Vercel
+## Deploy
+- **Dashboard:** Vercel, with `AGENTS_URL` set to the agents host and the two `NEXT_PUBLIC_SUPABASE_*` vars.
+- **Agents service:** an always-on host (Railway or Render), never serverless. From the repo root, the start command is `uvicorn agents.main:app --host 0.0.0.0 --port $PORT`.
+  - Set every var from `.env.example`.
+  - `PUBLIC_AGENTS_URL` must be the host's public URL, or Twilio signatures will not validate.
+  - Only this host holds the production Twilio token.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Changes from BOOTSTRAP.md
+- **Three lanes, not four.** Lane 2 (data) is a shared area with no owner. Stub markers are `# STUB: inbound / outbound / manager / shared`, not lane numbers.
+- **Per-lane routers.** Each lane mounts its own FastAPI router (`agents/<lane>/routes.py`), and `agents/main.py` only includes them. Task handlers live in `agents/inbound/jobs.py` and `agents/outbound/jobs.py`; `agents/tasks.py` only routes. This keeps three people out of the same files.
+- **The 833 gate.** `/sms` runs through the gate (`agents/inbound/gate.py`, `supabase/migrations/0002_ai_gate.sql`, the "833 gate" section of CONTRACTS.md), because the demo borrows the live number.
+  - `send_sms` refuses phones without an AI session, and it dry-runs when no Twilio token is set.
+  - New env vars: `AI_GATE_CODE`, `AI_GATE_TTL_HOURS`, `PROD_SMS_WEBHOOK_URL`.
+- **No ngrok step.** Nobody repoints the Twilio number except the owner, through the cutover runbook.
+- **Next.js 16.** create-next-app wrote `AGENTS.md` (Next's agent rules), which `app/CLAUDE.md` imports. `.gitignore` ignores every `.env*` except `.env.example`.
+- **Python 3.12,** pinned in `.python-version`.
+- **Extras:** `.claude/settings.json` allowlists the common dev commands for Claude Code, and a gitleaks GitHub Action scans every push for secrets.
