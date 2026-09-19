@@ -106,11 +106,12 @@ def pure_tests():
         assert "AI assistant" in prompt and "customer:" + PHONE in prompt
     prompt = system_prompt(Ctx(db=None, config=NEW_CONFIG, agent="inbound", ref=PHONE, phone=PHONE))
     assert "royal_groom" in prompt and "de_shed" in prompt and "16000" not in prompt
+    assert "### Playbook" in prompt and "### Never" in prompt and "prompt:start" not in prompt, "how-to-reply.md not injected"
     assert "Follow-up mode" not in prompt
     prompt = system_prompt(Ctx(db=None, config=NEW_CONFIG, agent="inbound", ref=PHONE, phone=PHONE,
                                task={"payload": {"phone": PHONE, "reason": "got a quote, did not book"}}))
     assert "Follow-up mode" in prompt and "got a quote, did not book" in prompt
-    print("ok  system_prompt: new, old and empty config; weekday table; follow-up section")
+    print("ok  system_prompt: new, old and empty config; weekday table; playbook; follow-up section")
 
     assert _norm("The Pines Apartments!") == "pines" and _norm("Test Pines Apts.") == "test pines"
     print("ok  lead names normalize")

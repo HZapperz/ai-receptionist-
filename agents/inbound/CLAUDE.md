@@ -24,6 +24,8 @@ get_info, quote, find_slots, book, lookup_lead, escalate, plus remember and reca
 ## Real conversations (local only)
 If `data/sms-export/` exists on your machine, it holds Royal Pawz's real SMS history, anonymized: 3,162 texts, and `reply_pairs.jsonl` with what customers asked and how staff answered. Read its README first. Use it for tone and example replies. It is gitignored; never copy its contents into committed files.
 
+`agents/inbound/how-to-reply.md` is the playbook distilled from that history, paraphrased with no customer data. prompt.py injects the part between its `prompt:start` and `prompt:end` markers on every run. Change the agent's voice and situation handling there, and keep hard rules in prompt.py.
+
 ## Prompt rules
 agents/inbound/prompt.py builds the prompt from business_config, then injects two sections per run: "What we know about this customer" (the customers row plus `customer:<phone>` notes) and "Recent tool results" (the last find_slots, quote and book results for this phone from agent_events). History is text only, so the second section is how "the 9am one" can be booked without re-querying slots.
 

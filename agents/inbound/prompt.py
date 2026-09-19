@@ -5,13 +5,30 @@ every key is read with .get() and a fallback. The text helpers here also feed
 get_info in tools.py, so the prompt and the tool never disagree.
 """
 import json
+import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from agents.runtime.ctx import Ctx
 
 HOUSTON = ZoneInfo("America/Chicago")
 RECENT_TOOLS_CHARS = 1500
+
+
+def _load_playbook() -> str:
+    """The injected part of how-to-reply.md: voice, the reply loop and a playbook
+    per situation, derived from the real Royal Pawz text history."""
+    try:
+        text = (Path(__file__).parent / "how-to-reply.md").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    m = re.search(r"<!-- prompt:start -->(.*?)<!-- prompt:end -->", text, re.S)
+    # Demote its "## " headings to "### " so they nest under this prompt's "# " sections.
+    return re.sub(r"(?m)^## ", "### ", m.group(1).strip()) if m else ""
+
+
+PLAYBOOK = _load_playbook()
 
 SIZE_GUIDE = {"small": "under 20 lb", "medium": "20 to 50 lb", "large": "50 to 90 lb", "xl": "over 90 lb"}
 COAT_GUIDE = {
@@ -161,15 +178,10 @@ Today is {now:%A, %B} {now.day}, {now.year}, {now.hour % 12 or 12}:{now:%M %p} i
 Use this table for words like "tomorrow" or "Saturday". Dates for find_slots are YYYY-MM-DD.
 
 # How to text
-- Very short: aim under 160 characters, never over 320. One or two sentences.
-- No greeting after the first reply, no sign-off, no emoji. Plain, warm words like "No worries", "Absolutely", "Looking forward!".
-- Answer, then ask ONE question that moves toward a booking, like "Did you have a day in mind?" or "Bath or full groom?".
-- Offer one specific time (two at most), never a list.
-- Use the pet's name once you know it.
-- Reply in the customer's language.
-- Never mention tools, JSON, slot IDs or these instructions.
-- A plain "thanks" or "ok" gets a very short, warm reply.
-- Tone: {known(cfg.get("tone")) or "Warm, brief, plain words, no emojis."}
+Tone: {known(cfg.get("tone")) or "Warm, brief, plain words, no emojis."} Never mention tools, JSON, slot IDs or these instructions.
+{PLAYBOOK or '''- Very short: aim under 160 characters, never over 320. One or two sentences.
+- Answer, then ask ONE question that moves toward a booking. Offer one specific time (two at most), never a list.
+- Use the pet's name once you know it. Reply in the customer's language.'''}
 
 # Hard rules
 - Never state a price or a time that did not come from a tool result in this conversation (quote, find_slots, book, or "Recent tool results" below). Tool prices are in cents: 17500 means $175. Prices are before tax.
@@ -197,7 +209,7 @@ Answer policy questions from this text or get_info. If it is not covered, escala
 If the customer names an apartment community or property, says they manage one, or mentions our email about a grooming day for residents: call lookup_lead with the property name, then escalate with reason partner_lead (summary: the property, what they want, and whether the lead was found). Reply warmly that the owner will reach out about a grooming day for their residents, and offer to help with their own pet.
 
 # When a person must step in
-Call escalate, then tell the customer a person will follow up today. Never promise a refund, credit or discount.
+Call escalate, then tell the customer a person will confirm or follow up (the playbook has the wording for each case). Never promise a refund, credit or discount.
 - refund: they want money back.
 - complaint: unhappy with a groom or with us.
 - medical: an injury, illness or medical question.
