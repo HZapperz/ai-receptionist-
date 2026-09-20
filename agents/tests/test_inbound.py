@@ -145,9 +145,34 @@ def pure_tests():
         for bad in ['{"text": "hi"}', "<tool_call>{broken", "<think>only thinking", ""]:
             llm.chat = fake_chat([bad], [])
             assert asyncio.run(run_agent(INBOUND, hi, ctx)) == GIVE_UP, bad
+
+        # A call pydantic rejects is rejected the same way forever, and the model answers a
+        # rejection by resending it -- one Manager question spent all ten steps that way.
+        repeat = ('<tool_call>{"name": "book", "arguments": {"slot_id": "s", "pet_name": "P", '
+                  '"customer_name": 12, "service": "royal_groom", "size": "small", "coat": "short"}}'
+                  "</tool_call>")
+        rounds: list = []
+        llm.chat = fake_chat([repeat, repeat, "Let me check that and come back to you."], rounds)
+        assert asyncio.run(run_agent(INBOUND, hi, ctx)) == "Let me check that and come back to you."
+        told = [m["content"] for m in rounds[-1] if m.get("role") == "tool"]
+        assert len(told) == 2 and "already rejected" in told[1], told
     finally:
         llm.chat = real_chat
     print("ok  run_agent: runs text tool calls; JSON, markup or empty replies give up")
+    print("ok  run_agent: a repeated rejected call is refused instead of burning the budget")
+
+    # The model types an id as a JSON number and pydantic v2 will not coerce it to a string.
+    def call(name, args):
+        return SimpleNamespace(id="c1", function=SimpleNamespace(name=name, arguments=json.dumps(args)))
+
+    bare = Ctx(db=None, config=NEW_CONFIG, agent="inbound", ref=PHONE, phone=PHONE)
+    fixed = asyncio.run(run_tool(INBOUND, call("quote", {"service": 7, "size": "small", "coat": "short"}), bare))
+    assert fixed.get("error") != "invalid arguments", fixed
+    kept = asyncio.run(run_tool(INBOUND, call("book", {
+        "slot_id": "s", "pet_name": "Fido", "customer_name": 1234,
+        "service": "royal_groom", "size": "small", "coat": "short"}), bare))
+    assert kept["error"] == "invalid arguments" and "customer_name" in kept["detail"], kept
+    print("ok  run_tool: a number where a string belongs is repaired, but never a name or phone")
 
 
 def cleanup(db):

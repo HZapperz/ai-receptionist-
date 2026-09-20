@@ -48,6 +48,11 @@ async def run_agent(spec: AgentSpec, messages: list[dict], ctx: Ctx, max_steps: 
     llm.current_lane.set(ctx.agent or "other")
     msgs: list[dict] = [{"role": "system", "content": spec.system_prompt(ctx)}, *messages]
     schemas = [t.schema() for t in spec.tools]
+    # A call pydantic rejected will be rejected identically forever, and the model answers a
+    # rejection by resending it -- one question burned all ten steps that way. Say so once,
+    # so the remaining steps go somewhere. Only argument errors: a tool that failed on a
+    # dropped connection or a busy table can well succeed on the very next try.
+    rejected: dict[str, str] = {}
     for _ in range(max_steps):
         kwargs = {}
         if spec.max_tokens is not None:
@@ -74,7 +79,19 @@ async def run_agent(spec: AgentSpec, messages: list[dict], ctx: Ctx, max_steps: 
                  "function": {"name": c.function.name, "arguments": c.function.arguments}}
                 for c in calls]})
         for call in calls:
-            result = await run_tool(spec, call, ctx)
+            key = f"{call.function.name}:{call.function.arguments}"
+            if key in rejected:
+                result = {"error": "already rejected", "detail":
+                          f"{call.function.name} was already rejected with these exact "
+                          f"arguments: {rejected[key]}. Sending it again will fail again. "
+                          "Correct the arguments, try another tool, or answer with what "
+                          "you already have."}
+                await log_event(ctx, kind="error", name="repeat_call",
+                                input={"tool": call.function.name}, result=result)
+            else:
+                result = await run_tool(spec, call, ctx)
+                if result.get("error") == "invalid arguments":
+                    rejected[key] = result.get("detail", "")
             msgs.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result, default=str)})
     await log_event(ctx, kind="error", name="max_steps", result={"steps": max_steps})
     return GIVE_UP
