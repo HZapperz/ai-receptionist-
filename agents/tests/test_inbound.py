@@ -23,7 +23,7 @@ from agents.runtime import llm
 from agents.runtime.ctx import Ctx
 from agents.runtime.llm import strip_think
 from agents.runtime.loop import GIVE_UP, parse_tool_calls, run_agent
-from agents.runtime.tools import run_tool
+from agents.runtime.tools import _as_e164, run_tool
 
 PHONE = "+15550002001"
 LEAD_PLACE_ID = "test-inbound-lead"
@@ -172,7 +172,11 @@ def pure_tests():
         "slot_id": "s", "pet_name": "Fido", "customer_name": 1234,
         "service": "royal_groom", "size": "small", "coat": "short"}), bare))
     assert kept["error"] == "invalid arguments" and "customer_name" in kept["detail"], kept
-    print("ok  run_tool: a number where a string belongs is repaired, but never a name or phone")
+    # A phone is put back into E.164 rather than stringified: "17132089751" has lost its "+"
+    # and would match no session while still reading like a phone.
+    assert _as_e164(17132089751) == "+17132089751" and _as_e164(7132089751) == "+17132089751"
+    assert _as_e164(12) is None and _as_e164(447700900123) is None
+    print("ok  run_tool: a number where a string belongs is repaired, a phone back into E.164")
 
 
 def cleanup(db):

@@ -31,11 +31,22 @@ class AgentSpec:
     tools: list[Tool]
     max_tokens: int | None = None
 
-# A phone is the one identifier str() quietly corrupts: 17132089751 loses its "+", still
-# looks right, and propose_book writes it straight into bookings and customers with no gate
-# in front of it. customer_name rides along because create_booking upserts on phone and
-# would overwrite a real customer's name. Getting these exactly right stays the model's job.
-NEVER_COERCE = {"phone", "customer_name"}
+# str() on a phone drops the "+", and a de-plussed number still looks right while matching
+# nothing: gate.active_session compares exactly, and create_booking would store it. Refusing
+# it outright is worse -- the model resends the same number rather than quoting it, and the
+# turn dies -- so put the number back into the E.164 form it plainly meant, or leave the
+# error standing. A name is never a number, so that one stays the model's job.
+PHONE_FIELDS = {"phone"}
+NEVER_COERCE = {"customer_name"}
+
+
+def _as_e164(n: int) -> str | None:
+    digits = str(n)
+    if len(digits) == 10:
+        return f"+1{digits}"
+    if len(digits) == 11 and digits.startswith("1"):
+        return f"+{digits}"
+    return None
 
 
 def _explain(e: ValidationError) -> str:
@@ -52,21 +63,24 @@ def _ints_as_strings(raw: str, e: ValidationError) -> dict | None:
     wants a string, as in {"phone_or_name": 17132089751}. Only the fields pydantic itself
     flagged, only at the top level, and only int -- a float arrives as "17132089751.0",
     which is wrong and still looks right. None leaves the original error standing."""
-    names = {
-        err["loc"][0]
-        for err in e.errors()
-        if err["type"] == "string_type"
-        and len(err["loc"]) == 1
-        and isinstance(err["loc"][0], str)
-        and type(err["input"]) is int  # `type(...) is` excludes bool, which subclasses int
-        and err["loc"][0] not in NEVER_COERCE
-    }
-    if not names:
+    fixes: dict[str, str] = {}
+    for err in e.errors():
+        name = err["loc"][0] if err["loc"] else None
+        if err["type"] != "string_type" or len(err["loc"]) != 1 or not isinstance(name, str):
+            continue
+        if name in NEVER_COERCE:
+            continue
+        if type(err["input"]) is not int:  # `type(...) is` excludes bool, which subclasses int
+            continue
+        fixed = _as_e164(err["input"]) if name in PHONE_FIELDS else str(err["input"])
+        if fixed is not None:
+            fixes[name] = fixed
+    if not fixes:
         return None
     data = json.loads(raw)
     if not isinstance(data, dict):
         return None
-    return {k: (str(v) if k in names else v) for k, v in data.items()}
+    return {**data, **fixes}
 
 
 async def run_tool(spec: AgentSpec, call, ctx: Ctx) -> dict:
